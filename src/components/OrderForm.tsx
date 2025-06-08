@@ -46,7 +46,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [selectedBranchRef, setSelectedBranchRef] = useState("");
   const [selectedBranchName, setSelectedBranchName] = useState("");
 
-  const apiKey = import.meta.env.VITE_NOVA_POSHTA_API_KEY;
+  const NOVA_POSHTA_KEY = import.meta.env.VITE_NOVA_POSHTA_API_KEY;
 
   // Build order summary text
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   // Fetch list of cities on mount
   useEffect(() => {
     async function fetchCities() {
-      if (!apiKey) {
+      if (!NOVA_POSHTA_KEY) {
         console.warn("Nova Poshta API key not found. Please add VITE_NOVA_POSHTA_API_KEY to your .env file");
         return;
       }
@@ -80,7 +80,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            apiKey: apiKey,
+            apiKey: NOVA_POSHTA_KEY,
             modelName: "Address",
             calledMethod: "getCities",
             methodProperties: { FindByString: "" },
@@ -98,7 +98,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       }
     }
     fetchCities();
-  }, [apiKey]);
+  }, [NOVA_POSHTA_KEY]);
 
   // Filter cities based on query
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   // Fetch branches when selectedCityRef changes
   useEffect(() => {
     async function fetchBranches() {
-      if (!selectedCityRef || !apiKey) {
+      if (!selectedCityRef || !NOVA_POSHTA_KEY) {
         setBranches([]);
         return;
       }
@@ -121,7 +121,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            apiKey: apiKey,
+            apiKey: NOVA_POSHTA_KEY,
             modelName: "Address",
             calledMethod: "getWarehouses",
             methodProperties: { CityRef: selectedCityRef },
@@ -138,7 +138,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       }
     }
     fetchBranches();
-  }, [selectedCityRef, apiKey]);
+  }, [selectedCityRef, NOVA_POSHTA_KEY]);
 
   // Handle city selection
   function onCitySelect(name: string) {
@@ -341,8 +341,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 value={cityQuery}
                 onChange={(e) => onCitySelect(e.target.value)}
                 required
-                disabled={!apiKey || isSubmitting}
-                placeholder={apiKey ? "Почніть вводити місто..." : "API ключ не налаштований"}
+                disabled={!NOVA_POSHTA_KEY || isSubmitting}
+                placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто..." : "API ключ не налаштований"}
                 className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
               />
               <datalist id="city-list">
@@ -421,7 +421,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             </button>
           </form>
 
-          {!apiKey && (
+          {!NOVA_POSHTA_KEY && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-yellow-800 text-sm">
                 <strong>Увага:</strong> Для роботи з Nova Poshta API потрібно додати ключ у файл .env:
