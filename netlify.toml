@@ -1,0 +1,34 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[forms]]
+  name = "offline-order"
+
+[form-notifications]
+  [[form-notifications.email]]
+    form = "offline-order"
+    to = "misha.taracuk@gmail.com"
+    subject = "Нове замовлення MIVA"
+    template = """
+Нове замовлення на сайті MIVA:
+
+ПІБ: {{ fullName }}
+Телефон: {{ phone }}
+Контакт: {{ contact }}
+Місто: {{ city }}
+Відділення: {{ branch }}
+
+Замовлення:
+{{ orderSummary }}
+
+Загальна сума: {{ totalSum }} грн
+
+Коментар: {{ comments }}
+
+---
+Відправлено з сайту MIVA
+    """

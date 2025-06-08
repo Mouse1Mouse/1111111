@@ -184,6 +184,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     
     const formData = new FormData(e.currentTarget);
     
+    // Add total sum to form data
+    formData.append('totalSum', totalSum.toString());
+    
     try {
       const response = await fetch('/', {
         method: 'POST',
