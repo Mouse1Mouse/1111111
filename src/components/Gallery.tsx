@@ -1,0 +1,119 @@
+import React from "react";
+import ProductCard from "./ProductCard";
+
+export default function Gallery() {
+  const products = [
+    { 
+      id: "1",
+      title: "Бежевий комплект",
+      imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
+      id: "2",
+      title: "Світло-сірий комплект",
+      imageUrl: "https://images.pexels.com/photos/1267438/pexels-photo-1267438.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
+      id: "3",
+      title: "Карамельний комплект",
+      imageUrl: "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
+      id: "4",
+      title: "Кремовий комплект",
+      imageUrl: "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
+      id: "5",
+      title: "Графітовий комплект",
+      imageUrl: "https://images.pexels.com/photos/1454806/pexels-photo-1454806.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
+      id: "6",
+      title: "Ніжно-рожевий комплект",
+      imageUrl: "https://images.pexels.com/photos/1374125/pexels-photo-1374125.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
+  ];
+
+  return (
+    <section id="gallery" className="py-24 bg-gradient-to-br from-[#fff7ed] to-[#fdf2e9]">
+      <div className="container mx-auto px-4">
+        <h2 className="text-3xl md:text-4xl font-bold text-brandBrown text-center mb-16 text-shadow-sm opacity-0 animate-fadeInUp">
+          Галерея
+        </h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {products.map((product) => (
+            <ProductCard key={product.id} item={product} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

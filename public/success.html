@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Дякуємо за замовлення - MIVA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cream: "#fff7ed",
+              caramel: "#f5e9db",
+              beige: "#fef2e9",
+              graphite: "#3a3a3a",
+              brandBrown: "#a66b3f",
+              gold: "#d4af37"
+            },
+            fontFamily: {
+              montserrat: ['Montserrat', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-gradient-to-br from-cream to-beige text-graphite font-montserrat min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-2xl mx-auto text-center bg-white bg-opacity-90 rounded-2xl shadow-2xl p-12">
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-brandBrown mb-4">Дякуємо за замовлення!</h1>
+        <p class="text-xl text-graphite mb-6">Ваше замовлення успішно прийнято і передано в обробку.</p>
+      </div>
+
+      <div class="bg-gradient-to-br from-gold/10 to-brandBrown/10 rounded-xl p-8 mb-8">
+        <h2 class="text-2xl font-semibold text-brandBrown mb-6">Реквізити для оплати:</h2>
+        
+        <div class="space-y-3 text-left">
+          <div class="flex justify-between border-b border-gray-200 pb-2">
+            <span class="font-medium text-graphite">IBAN:</span>
+            <span class="font-bold text-brandBrown">UA12 3456 7890 1234 5678 9012 3456</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-200 pb-2">
+            <span class="font-medium text-graphite">Одержувач:</span>
+            <span class="font-bold text-brandBrown">ФОП Іваненко Марія Петрівна</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-200 pb-2">
+            <span class="font-medium text-graphite">Банк:</span>
+            <span class="font-bold text-brandBrown">ПриватБанк</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="font-medium text-graphite">Призначення:</span>
+            <span class="font-bold text-brandBrown">Оплата за постільну білизну MIVA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-blue-50 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold text-brandBrown mb-3">Що далі?</h3>
+        <ol class="text-left space-y-2 text-graphite">
+          <li class="flex items-start">
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">1</span>
+            <span>Ми зв'яжемося з вами протягом 2 годин для підтвердження замовлення</span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">2</span>
+            <span>Після підтвердження здійсніть оплату за вказаними реквізитами</span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">3</span>
+            <span>Надішліть скріншот переказу у Viber або Telegram</span>
+          </li>
+          <li class="flex items-start">
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">4</span>
+            <span>Ваше замовлення буде виготовлено та відправлено протягом 1-2 робочих днів</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="text-center">
+        <p class="text-graphite mb-4">
+          <strong>Контакти для зв'язку:</strong><br>
+          Viber/Telegram: +38 (012) 345-67-89<br>
+          Email: contact@miva.ua<br>
+          Instagram: @miva_ua
+        </p>
+        
+        <a 
+          href="/" 
+          class="inline-block bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-8 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+        >
+          Повернутися на головну
+        </a>
+      </div>
+    </div>
+  </body>
+</html>
