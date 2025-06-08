@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import OrderForm from './OrderForm';
+import PaymentModal from './PaymentModal';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -11,12 +12,25 @@ interface CartDrawerProps {
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, removeItem, updateQuantity } = useCart();
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Calculate total sum
   const totalSum = items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
 
   const handleBackToCart = () => {
     setShowOrderForm(false);
+  };
+
+  const handleOrderClick = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentMethodSelect = (method: 'monopay' | 'bank') => {
+    setShowPaymentModal(false);
+    if (method === 'bank') {
+      setShowOrderForm(true);
+    }
+    // MonoPay will be handled in PaymentModal
   };
 
   return (
@@ -78,8 +92,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {/* Order button */}
                 <div className="px-6 pb-6">
                   <button
-                    onClick={() => setShowOrderForm(true)}
-                    className="w-full bg-brandBrown text-white py-3 rounded hover:bg-[#8b5533] transition-colors"
+                    onClick={handleOrderClick}
+                    disabled={items.length === 0}
+                    className="w-full bg-brandBrown text-white py-3 rounded hover:bg-[#8b5533] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     Оформити замовлення
                   </button>
@@ -91,6 +106,15 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           <OrderForm onBack={handleBackToCart} />
         )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal 
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentMethodSelect={handlePaymentMethodSelect}
+        totalAmount={totalSum}
+        cartItems={items}
+      />
     </div>
   );
 }

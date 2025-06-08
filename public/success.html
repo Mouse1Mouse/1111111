@@ -32,10 +32,25 @@
     <div class="max-w-2xl mx-auto text-center bg-white bg-opacity-90 rounded-2xl shadow-2xl p-12">
       <div class="mb-8">
         <h1 class="text-4xl font-bold text-brandBrown mb-4">Дякуємо за замовлення!</h1>
-        <p class="text-xl text-graphite mb-6">Ваше замовлення успішно прийнято і передано в обробку.</p>
+        <p class="text-xl text-graphite mb-6" id="success-message">Ваше замовлення успішно прийнято і передано в обробку.</p>
       </div>
 
-      <div class="bg-gradient-to-br from-gold/10 to-brandBrown/10 rounded-xl p-8 mb-8">
+      <!-- Payment Success Section (shown for MonoPay) -->
+      <div id="payment-success" class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-8 mb-8 hidden">
+        <div class="flex items-center justify-center mb-4">
+          <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+        </div>
+        <h2 class="text-2xl font-semibold text-green-700 mb-4">Оплата успішна!</h2>
+        <p class="text-green-600 mb-4">Ваше замовлення оплачено через MonoPay</p>
+        <p class="text-sm text-green-600" id="order-id"></p>
+      </div>
+
+      <!-- Bank Transfer Section (shown for bank transfer) -->
+      <div id="bank-transfer" class="bg-gradient-to-br from-gold/10 to-brandBrown/10 rounded-xl p-8 mb-8">
         <h2 class="text-2xl font-semibold text-brandBrown mb-6">Реквізити для оплати:</h2>
         
         <div class="space-y-3 text-left">
@@ -60,16 +75,16 @@
 
       <div class="bg-blue-50 rounded-lg p-6 mb-8">
         <h3 class="text-lg font-semibold text-brandBrown mb-3">Що далі?</h3>
-        <ol class="text-left space-y-2 text-graphite">
+        <ol class="text-left space-y-2 text-graphite" id="next-steps">
           <li class="flex items-start">
             <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">1</span>
             <span>Ми зв'яжемося з вами протягом 2 годин для підтвердження замовлення</span>
           </li>
-          <li class="flex items-start">
+          <li class="flex items-start" id="payment-step">
             <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">2</span>
             <span>Після підтвердження здійсніть оплату за вказаними реквізитами</span>
           </li>
-          <li class="flex items-start">
+          <li class="flex items-start" id="screenshot-step">
             <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">3</span>
             <span>Надішліть скріншот переказу у Viber або Telegram</span>
           </li>
@@ -96,5 +111,34 @@
         </a>
       </div>
     </div>
+
+    <script>
+      // Check URL parameters to determine payment method
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentMethod = urlParams.get('payment');
+      const orderId = urlParams.get('orderId');
+
+      if (paymentMethod === 'monopay') {
+        // Show MonoPay success message
+        document.getElementById('payment-success').classList.remove('hidden');
+        document.getElementById('bank-transfer').classList.add('hidden');
+        
+        if (orderId) {
+          document.getElementById('order-id').textContent = `Номер замовлення: ${orderId}`;
+        }
+
+        // Update next steps for paid orders
+        document.getElementById('payment-step').style.display = 'none';
+        document.getElementById('screenshot-step').style.display = 'none';
+        
+        // Update step numbers
+        const steps = document.querySelectorAll('#next-steps li span:first-child');
+        steps[2].textContent = '2'; // Manufacturing step becomes step 2
+      } else {
+        // Show bank transfer instructions (default)
+        document.getElementById('payment-success').classList.add('hidden');
+        document.getElementById('bank-transfer').classList.remove('hidden');
+      }
+    </script>
   </body>
 </html>
