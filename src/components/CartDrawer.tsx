@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import OrderForm from './OrderForm';
-import PaymentModal from './PaymentModal';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -12,7 +11,6 @@ interface CartDrawerProps {
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { items, removeItem, updateQuantity } = useCart();
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Calculate total sum
   const totalSum = items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
@@ -22,15 +20,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   };
 
   const handleOrderClick = () => {
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentMethodSelect = (method: 'monopay' | 'bank') => {
-    setShowPaymentModal(false);
-    if (method === 'bank') {
-      setShowOrderForm(true);
-    }
-    // MonoPay will be handled in PaymentModal
+    setShowOrderForm(true);
   };
 
   return (
@@ -106,15 +96,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           <OrderForm onBack={handleBackToCart} />
         )}
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal 
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onPaymentMethodSelect={handlePaymentMethodSelect}
-        totalAmount={totalSum}
-        cartItems={items}
-      />
     </div>
   );
 }
