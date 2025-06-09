@@ -6,12 +6,12 @@ export default function Gallery() {
     { 
       id: "palette",
       title: "Палітра кольорів",
-      imageUrl: "/photo_2025-06-10_02-17-11.jpg",
+      imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
       images: [
-        "/photo_2025-06-10_02-17-11.jpg",
-        "/photo_2025-06-10_02-17-13.jpg",
-        "/photo_2025-06-10_02-17-14.jpg",
-        "/photo_2025-06-10_02-17-16.jpg"
+        "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "https://images.pexels.com/photos/1374125/pexels-photo-1374125.jpeg?auto=compress&cs=tinysrgb&w=1200"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
