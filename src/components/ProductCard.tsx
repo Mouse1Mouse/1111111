@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 interface Option {
@@ -10,6 +11,7 @@ interface ProductItem {
   id: string;
   title: string;
   imageUrl: string;
+  images?: string[];
   setOptions: Option[];
   pillowOptions: Option[];
 }
@@ -23,6 +25,7 @@ export default function ProductCard({ item }: ProductCardProps) {
   const [selectedPillowOption, setSelectedPillowOption] = useState(item.pillowOptions[0].label);
   const [quantity, setQuantity] = useState(1);
   const [includeRezinka, setIncludeRezinka] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Rezinka states
   const standardRezinkaSizes = ["160×200×20", "170×200×20", "180×200×20"];
@@ -33,6 +36,18 @@ export default function ProductCard({ item }: ProductCardProps) {
   const priceRezinka = 250;
   
   const { addItem } = useCart();
+
+  // Get images array (use images if available, otherwise use single imageUrl)
+  const images = item.images || [item.imageUrl];
+  const hasMultipleImages = images.length > 1;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   const isCustomRezValid = () => {
     const w = Number(customRezWidth);
@@ -50,7 +65,7 @@ export default function ProductCard({ item }: ProductCardProps) {
     addItem({
       id: item.id,
       title: item.title,
-      imageUrl: item.imageUrl,
+      imageUrl: images[currentImageIndex],
       chosenSet: selectedSet.label,
       chosenPillow: selectedPillowOption,
       quantity,
@@ -78,14 +93,56 @@ export default function ProductCard({ item }: ProductCardProps) {
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300">
       <figure className="relative group">
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        <div className="relative overflow-hidden">
+          <img
+            src={images[currentImageIndex]}
+            alt={`${item.title} - зображення ${currentImageIndex + 1}`}
+            className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          
+          {/* Image navigation arrows */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                aria-label="Попереднє зображення"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                aria-label="Наступне зображення"
+              >
+                <ChevronRight size={20} />
+              </button>
+              
+              {/* Image indicators */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                      index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                    }`}
+                    aria-label={`Зображення ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        
         <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.4)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <figcaption className="absolute bottom-6 left-6 text-white text-xl font-semibold drop-shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
           {item.title}
+          {hasMultipleImages && (
+            <span className="block text-sm font-normal mt-1">
+              {currentImageIndex + 1} з {images.length}
+            </span>
+          )}
         </figcaption>
       </figure>
 
