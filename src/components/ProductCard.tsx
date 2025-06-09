@@ -282,7 +282,7 @@ export default function ProductCard({ item }: ProductCardProps) {
                     />
                   ))}
                 </div>
-              )}
+              </>
             )}
           </div>
           
