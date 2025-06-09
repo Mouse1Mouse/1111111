@@ -22,11 +22,11 @@ export default function Gallery() {
     { 
       id: "2",
       title: "Світло-сірий комплект",
-      imageUrl: "/photo_2025-06-10_01-33-00.jpg",
+      imageUrl: "/photo_2025-06-10_02-06-23.jpg",
       images: [
-        "/photo_2025-06-10_01-33-00.jpg",
-        "/photo_2025-06-10_01-33-20.jpg",
-        "/photo_2025-06-10_01-33-23.jpg"
+        "/photo_2025-06-10_02-06-23.jpg",
+        "/photo_2025-06-10_02-06-25.jpg",
+        "/photo_2025-06-10_02-06-49.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
