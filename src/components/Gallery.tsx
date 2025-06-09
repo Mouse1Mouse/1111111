@@ -75,7 +75,12 @@ export default function Gallery() {
     { 
       id: "5",
       title: "Графітовий комплект",
-      imageUrl: "https://images.pexels.com/photos/1454806/pexels-photo-1454806.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "/photo_2025-06-10_01-39-27.jpg",
+      images: [
+        "/photo_2025-06-10_01-39-27.jpg",
+        "/photo_2025-06-10_01-39-39.jpg",
+        "/photo_2025-06-10_01-39-45.jpg"
+      ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
