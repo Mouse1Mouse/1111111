@@ -6,24 +6,16 @@ export default function Gallery() {
     { 
       id: "palette",
       title: "Палітра кольорів",
-      imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "/photo_2025-06-10_02-17-13.jpg",
       images: [
-        "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        "https://images.pexels.com/photos/1374125/pexels-photo-1374125.jpeg?auto=compress&cs=tinysrgb&w=1200"
+        "/photo_2025-06-10_02-17-13.jpg",
+        "/photo_2025-06-10_02-17-11.jpg",
+        "/photo_2025-06-10_02-17-14.jpg",
+        "/photo_2025-06-10_02-17-16.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: [],
+      pillowOptions: [],
+      isPalette: true
     },
     { 
       id: "1",

@@ -15,6 +15,7 @@ interface ProductItem {
   images?: string[];
   setOptions: Option[];
   pillowOptions: Option[];
+  isPalette?: boolean;
 }
 
 interface ProductCardProps {
@@ -22,8 +23,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ item }: ProductCardProps) {
-  const [selectedSetOption, setSelectedSetOption] = useState(item.setOptions[0].label);
-  const [selectedPillowOption, setSelectedPillowOption] = useState(item.pillowOptions[0].label);
+  const [selectedSetOption, setSelectedSetOption] = useState(item.setOptions[0]?.label || '');
+  const [selectedPillowOption, setSelectedPillowOption] = useState(item.pillowOptions[0]?.label || '');
   const [quantity, setQuantity] = useState(1);
   const [includeRezinka, setIncludeRezinka] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -130,6 +131,101 @@ export default function ProductCard({ item }: ProductCardProps) {
     }
   };
 
+  // If this is a palette item, show only image gallery without purchase options
+  if (item.isPalette) {
+    return (
+      <>
+        <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300">
+          <figure className="relative group">
+            <div className="relative overflow-hidden">
+              <img
+                src={images[currentImageIndex]}
+                alt={`${item.title} - зображення ${currentImageIndex + 1}`}
+                className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
+                onClick={openModal}
+              />
+              
+              {/* Expand icon for full view */}
+              <button
+                onClick={openModal}
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+                aria-label="Відкрити у повному розмірі"
+                type="button"
+              >
+                <Expand size={20} />
+              </button>
+              
+              {/* Image navigation arrows */}
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+                    aria-label="Попереднє зображення"
+                    type="button"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 mr-16"
+                    aria-label="Наступне зображення"
+                    type="button"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                  
+                  {/* Image indicators */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                    {images.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => goToImage(index, e)}
+                        className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                        aria-label={`Зображення ${index + 1}`}
+                        type="button"
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.4)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <figcaption className="absolute bottom-6 left-6 text-white text-xl font-semibold drop-shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              {item.title}
+              {hasMultipleImages && (
+                <span className="block text-sm font-normal mt-1">
+                  {currentImageIndex + 1} з {images.length}
+                </span>
+              )}
+            </figcaption>
+          </figure>
+
+          <div className="p-6 text-center">
+            <p className="text-graphite text-lg">
+              Переглядайте всі доступні кольори постільної білизни. 
+              Натисніть на зображення для детального перегляду.
+            </p>
+          </div>
+        </div>
+
+        {/* Image Modal */}
+        <ImageModal
+          isOpen={isModalOpen}
+          onClose={closeModal}
+          images={images}
+          currentIndex={currentImageIndex}
+          onPrevious={() => prevImage()}
+          onNext={() => nextImage()}
+          title={item.title}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300">
@@ -186,7 +282,7 @@ export default function ProductCard({ item }: ProductCardProps) {
                     />
                   ))}
                 </div>
-              </>
+              )}
             )}
           </div>
           
