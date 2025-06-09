@@ -4,6 +4,28 @@ import ProductCard from "./ProductCard";
 export default function Gallery() {
   const products = [
     { 
+      id: "palette",
+      title: "Палітра кольорів",
+      imageUrl: "/photo_2025-06-10_02-17-11.jpg",
+      images: [
+        "/photo_2025-06-10_02-17-11.jpg",
+        "/photo_2025-06-10_02-17-13.jpg",
+        "/photo_2025-06-10_02-17-14.jpg",
+        "/photo_2025-06-10_02-17-16.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1400 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1450 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1550 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    },
+    { 
       id: "1",
       title: "Бежевий комплект",
       imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
