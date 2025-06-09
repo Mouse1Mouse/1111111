@@ -34,6 +34,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [invoiceUrl, setInvoiceUrl] = useState("");
 
   // Nova Poshta integration
   const [cityQuery, setCityQuery] = useState("");
@@ -212,7 +213,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       const result = await response.json();
 
       if (response.ok && result.invoiceId) {
-        // Invoice created successfully, show payment options
+        // Invoice created successfully, store the payment URL
+        setInvoiceUrl(result.pageUrl);
         setIsFormSubmitted(true);
       } else {
         console.error('Monobank API error:', result);
@@ -279,6 +281,17 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     // Clear cart and redirect to success page for bank transfer
     clearCart();
     window.location.href = '/success.html?payment=bank';
+  };
+
+  const handleDirectPayment = () => {
+    if (invoiceUrl) {
+      // Open Monobank payment page in new window
+      window.open(invoiceUrl, '_blank');
+      
+      // Clear cart and redirect to success page
+      clearCart();
+      window.location.href = '/success.html?payment=monopay';
+    }
   };
 
   return (
@@ -466,10 +479,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           </div>
 
           <div className="space-y-4">
-            {/* MonoPay Option */}
+            {/* Direct Monobank Payment Option */}
             <button
-              onClick={handleMonoPayment}
-              disabled={isPaymentProcessing}
+              onClick={handleDirectPayment}
+              disabled={isPaymentProcessing || !invoiceUrl}
               className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center">
@@ -480,12 +493,34 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 </div>
                 <div className="text-left">
                   <h3 className="font-semibold text-graphite">
-                    {isPaymentProcessing ? 'Обробка...' : 'Оплатити онлайн через Monobank'}
+                    Оплатити онлайн через Monobank
                   </h3>
-                  <p className="text-sm text-gray-600">Картою онлайн (MonoPay)</p>
+                  <p className="text-sm text-gray-600">Картою онлайн (безпечно)</p>
                 </div>
               </div>
               <div className="text-green-600 font-medium">Швидко</div>
+            </button>
+
+            {/* MonoPay SDK Option (fallback) */}
+            <button
+              onClick={handleMonoPayment}
+              disabled={isPaymentProcessing}
+              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
+                  <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-graphite">
+                    {isPaymentProcessing ? 'Обробка...' : 'MonoPay (модальне вікно)'}
+                  </h3>
+                  <p className="text-sm text-gray-600">Альтернативний спосіб</p>
+                </div>
+              </div>
+              <div className="text-blue-600 font-medium">SDK</div>
             </button>
 
             {/* Bank Transfer Option */}
