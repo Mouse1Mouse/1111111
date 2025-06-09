@@ -3,7 +3,7 @@ import React from "react";
 export default function Hero() {
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-[rgba(255,244,230,0.8)] to-[rgba(245,233,219,0.8)]">
-      <div className="absolute inset-0 bg-[url('https://images.pexels.com/photos/7319317/pexels-photo-7319317.jpeg?auto=compress&cs=tinysrgb&w=1920')] bg-cover bg-center opacity-20"></div>
+      <div className="absolute inset-0 bg-[url('/photo_2024-12-30_22-52-21.jpg')] bg-cover bg-center opacity-20"></div>
       <div className="relative container mx-auto px-4 pt-32 pb-20 md:pt-40 md:pb-32 text-center">
         <div className="opacity-0 animate-fadeInUp">
           <h1 className="text-6xl md:text-7xl font-extrabold text-brandBrown mb-6 text-shadow-md">
