@@ -47,6 +47,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [selectedBranchName, setSelectedBranchName] = useState("");
 
   const NOVA_POSHTA_KEY = import.meta.env.VITE_NOVA_POSHTA_API_KEY;
+  const MONOBANK_TOKEN = 'mpbXCUIRaGB_E54bLbeSRCw';
 
   // Build order summary text
   useEffect(() => {
@@ -182,25 +183,43 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     
     setIsSubmitting(true);
     
-    const formData = new FormData(e.currentTarget);
-    
-    // Add total sum to form data
-    formData.append('totalSum', totalSum.toString());
-    
     try {
-      const response = await fetch('/', {
+      // Create invoice directly with Monobank API
+      const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const invoiceData = {
+        amount: totalSum * 100, // Convert to kopecks
+        ccy: 980, // UAH currency code
+        merchantPaymInfo: {
+          reference: orderId,
+          destination: "Оплата замовлення MIVA",
+          comment: `Замовлення від ${fullName}, тел: ${phone}`,
+          customerEmails: [contact.includes('@') ? contact : '']
+        },
+        redirectUrl: `${window.location.origin}/success.html?payment=monopay&orderId=${orderId}`,
+        webHookUrl: `${window.location.origin}/webhook/monobank`
+      };
+
+      const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData as any).toString()
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Token': MONOBANK_TOKEN
+        },
+        body: JSON.stringify(invoiceData)
       });
 
-      if (response.ok) {
-        // Form submitted successfully, show payment options
+      const result = await response.json();
+
+      if (response.ok && result.invoiceId) {
+        // Invoice created successfully, show payment options
         setIsFormSubmitted(true);
       } else {
-        alert('Помилка при відправці замовлення. Спробуйте ще раз.');
+        console.error('Monobank API error:', result);
+        alert('Помилка при створенні рахунку. Спробуйте ще раз.');
       }
     } catch (error) {
+      console.error('Error creating invoice:', error);
       alert('Помилка при відправці замовлення. Спробуйте ще раз.');
     } finally {
       setIsSubmitting(false);
@@ -223,7 +242,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       
       // Create MonoPay instance
       const monoPay = window.MonoPay.create({
-        token: 'mpbXCUIRaGB_E54bLbeSRCw',
+        token: MONOBANK_TOKEN,
         amount: totalSum * 100, // MonoPay expects amount in kopecks
         orderId: orderId,
         onSuccess: (response) => {
@@ -279,14 +298,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         // Order Form
         <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
           <form
-            name="offline-order"
-            method="POST"
-            data-netlify="true"
             onSubmit={handleSubmit}
             className="space-y-4"
           >
-            <input type="hidden" name="form-name" value="offline-order" />
-
             {/* ПІБ */}
             <label className="block">
               <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
@@ -417,7 +431,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               disabled={!isFormValid() || isSubmitting}
               className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
             >
-              {isSubmitting ? 'Відправляємо...' : 'Відправити замовлення'}
+              {isSubmitting ? 'Створюємо рахунок...' : 'Оформити замовлення'}
             </button>
           </form>
 
@@ -440,8 +454,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
-            <h3 className="text-2xl font-semibold text-brandBrown mb-2">Замовлення відправлено!</h3>
-            <p className="text-graphite mb-4">Дані замовлення надіслано на email. Тепер оберіть спосіб оплати:</p>
+            <h3 className="text-2xl font-semibold text-brandBrown mb-2">Рахунок створено!</h3>
+            <p className="text-graphite mb-4">Тепер оберіть спосіб оплати:</p>
           </div>
 
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
