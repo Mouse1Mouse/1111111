@@ -36,11 +36,11 @@ export default function Gallery() {
     { 
       id: "2",
       title: "Світло-сірий комплект",
-      imageUrl: "/photo_2025-06-10_02-06-23.jpg",
+      imageUrl: "/grey1.jpg",
       images: [
-        "/photo_2025-06-10_02-06-23.jpg",
-        "/photo_2025-06-10_02-06-25.jpg",
-        "/photo_2025-06-10_02-06-49.jpg"
+        "/grey1.jpg",
+        "/grey2.jpg",
+        "/grey3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -89,11 +89,11 @@ export default function Gallery() {
     { 
       id: "5",
       title: "Графітовий комплект",
-      imageUrl: "/photo_2025-06-10_01-39-27.jpg",
+      imageUrl: "/graphite1.jpg",
       images: [
-        "/photo_2025-06-10_01-39-27.jpg",
-        "/photo_2025-06-10_01-39-39.jpg",
-        "/photo_2025-06-10_01-39-45.jpg"
+        "/graphite1.jpg",
+        "/graphite2.jpg",
+        "/graphite3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -110,11 +110,11 @@ export default function Gallery() {
     { 
       id: "6",
       title: "Ніжно-рожевий комплект",
-      imageUrl: "/IMG_7340.JPG",
+      imageUrl: "/pink1.jpg",
       images: [
-        "/IMG_7340.JPG",
-        "/IMG_7341.JPG",
-        "/IMG_7342.JPG"
+        "/pink1.jpg",
+        "/pink2.jpg",
+        "/pink3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -131,11 +131,11 @@ export default function Gallery() {
     { 
       id: "7",
       title: "Чорний комплект",
-      imageUrl: "/photo_2025-06-10_01-53-36.jpg",
+      imageUrl: "/black1.jpg",
       images: [
-        "/photo_2025-06-10_01-53-36.jpg",
-        "/photo_2025-06-10_01-53-38.jpg",
-        "/photo_2025-06-10_01-53-46.jpg"
+        "/black1.jpg",
+        "/black2.jpg",
+        "/black3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -152,11 +152,11 @@ export default function Gallery() {
     { 
       id: "8",
       title: "Салатовий комплект",
-      imageUrl: "/photo_2025-06-10_01-57-08.jpg",
+      imageUrl: "/green1.jpg",
       images: [
-        "/photo_2025-06-10_01-57-08.jpg",
-        "/photo_2025-06-10_01-57-12.jpg",
-        "/photo_2025-06-10_01-57-13.jpg"
+        "/green1.jpg",
+        "/green2.jpg",
+        "/green3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -173,11 +173,11 @@ export default function Gallery() {
     { 
       id: "9",
       title: "Білий комплект",
-      imageUrl: "/photo_2025-06-10_02-01-42.jpg",
+      imageUrl: "/white1.jpg",
       images: [
-        "/photo_2025-06-10_02-01-42.jpg",
-        "/photo_2025-06-10_02-01-46.jpg",
-        "/photo_2025-06-10_02-01-56.jpg"
+        "/white1.jpg",
+        "/white2.jpg",
+        "/white3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
@@ -194,11 +194,11 @@ export default function Gallery() {
     { 
       id: "10",
       title: "Блакитний комплект",
-      imageUrl: "/photo_2025-06-10_18-28-37.jpg",
+      imageUrl: "/blue1.jpg",
       images: [
-        "/photo_2025-06-10_18-28-37.jpg",
-        "/photo_2025-06-10_18-28-39.jpg",
-        "/photo_2025-06-10_18-28-42.jpg"
+        "/blue1.jpg",
+        "/blue2.jpg",
+        "/blue3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
