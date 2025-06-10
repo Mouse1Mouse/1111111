@@ -22,10 +22,8 @@ export default function Header() {
   }, []);
 
   const handleColorCombination = () => {
-    const message = encodeURIComponent(
-      "Привіт! Мені потрібна допомога з комбінуванням кольорів постільної білизни. Чи можете допомогти підібрати гарне поєднання кольорів для мого інтер'єру?"
-    );
-    const instagramUrl = `https://www.instagram.com/direct/new/?text=${message}`;
+    // Відкриваємо Instagram профіль @miva_ua для відправки повідомлення
+    const instagramUrl = 'https://www.instagram.com/miva_ua/';
     window.open(instagramUrl, '_blank');
   };
 
@@ -110,7 +108,7 @@ export default function Header() {
             <button 
               onClick={handleColorCombination}
               className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-3 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
-              title="Допомога з комбінуванням кольорів"
+              title="Допомога з комбінуванням кольорів в Instagram"
             >
               <Palette size={16} />
               <span>Комбінація кольорів</span>
@@ -120,7 +118,7 @@ export default function Header() {
             <button 
               onClick={handleColorCombination}
               className="lg:hidden relative text-graphite hover:text-brandBrown transition-colors p-2"
-              title="Допомога з комбінуванням кольорів"
+              title="Допомога з комбінуванням кольорів в Instagram"
             >
               <Palette size={20} />
             </button>
@@ -199,6 +197,18 @@ export default function Header() {
                   >
                     Контакти
                   </a>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => {
+                      handleColorCombination();
+                      closeMobileMenu();
+                    }}
+                    className="w-full text-left bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-4 py-3 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2"
+                  >
+                    <Palette size={16} />
+                    <span>Комбінація кольорів</span>
+                  </button>
                 </li>
               </ul>
             </nav>

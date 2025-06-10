@@ -131,6 +131,12 @@ export default function ProductCard({ item }: ProductCardProps) {
     }
   };
 
+  const handleColorCombination = () => {
+    // Відкриваємо Instagram профіль @miva_ua
+    const instagramUrl = 'https://www.instagram.com/miva_ua/';
+    window.open(instagramUrl, '_blank');
+  };
+
   // If this is a palette item, show only image gallery without purchase options
   if (item.isPalette) {
     return (
@@ -212,11 +218,16 @@ export default function ProductCard({ item }: ProductCardProps) {
               Переглядайте всі доступні кольори постільної білизни. 
               Натисніть на зображення для детального перегляду.
             </p>
-            <div className="bg-gradient-to-r from-cream to-beige p-4 rounded-lg">
-              <p className="text-brandBrown font-medium text-sm">
-                💡 Потрібна допомога з комбінуванням кольорів? 
-                Скористайтеся кнопкою "Комбінація кольорів" у верхньому меню!
+            <div className="bg-gradient-to-r from-cream to-beige p-4 rounded-lg mb-4">
+              <p className="text-brandBrown font-medium text-sm mb-3">
+                💡 Потрібна допомога з комбінуванням кольорів?
               </p>
+              <button
+                onClick={handleColorCombination}
+                className="bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-4 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
+              >
+                Написати в Instagram
+              </button>
             </div>
           </div>
         </div>
