@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { ShoppingBag, Palette } from "lucide-react";
+import { ShoppingBag, Palette, Menu, X } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import CartDrawer from "./CartDrawer";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { items, toggleCart, isCartOpen } = useCart();
   
   useEffect(() => {
@@ -27,6 +28,20 @@ export default function Header() {
     const instagramUrl = `https://www.instagram.com/direct/new/?text=${message}`;
     window.open(instagramUrl, '_blank');
   };
+
+  const handleCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleCart();
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
   
   return (
     <>
@@ -40,7 +55,7 @@ export default function Header() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <a 
             href="#" 
-            className="text-3xl md:text-4xl font-extrabold text-brandBrown hover:underline hover:decoration-gold decoration-2 transition-all duration-200"
+            className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-brandBrown hover:underline hover:decoration-gold decoration-2 transition-all duration-200"
           >
             MIVA
           </a>
@@ -90,49 +105,105 @@ export default function Header() {
             </ul>
           </nav>
           
-          <div className="flex items-center gap-4">
-            {/* Color Combination Button */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Color Combination Button - Desktop */}
             <button 
               onClick={handleColorCombination}
-              className="hidden md:flex items-center gap-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-4 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+              className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-3 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
               title="Допомога з комбінуванням кольорів"
             >
-              <Palette size={18} />
-              <span className="text-sm">Комбінація кольорів</span>
+              <Palette size={16} />
+              <span>Комбінація кольорів</span>
             </button>
 
-            {/* Mobile Color Combination Button */}
+            {/* Color Combination Button - Mobile */}
             <button 
               onClick={handleColorCombination}
-              className="md:hidden relative text-graphite hover:text-brandBrown transition-colors p-2"
+              className="lg:hidden relative text-graphite hover:text-brandBrown transition-colors p-2"
               title="Допомога з комбінуванням кольорів"
             >
-              <Palette size={24} />
+              <Palette size={20} />
             </button>
             
+            {/* Cart Button */}
             <button 
-              onClick={toggleCart}
-              className="relative text-graphite hover:text-brandBrown transition-colors p-2"
+              onClick={handleCartClick}
+              className="relative text-graphite hover:text-brandBrown transition-colors p-2 touch-manipulation"
+              aria-label="Відкрити кошик"
             >
               <ShoppingBag size={24} />
               {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
                   {items.length}
                 </span>
               )}
             </button>
             
-            <div className="md:hidden">
-              <button className="text-graphite hover:text-brandBrown transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="12" x2="21" y2="12"></line>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-              </button>
-            </div>
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={toggleMobileMenu}
+              className="md:hidden text-graphite hover:text-brandBrown transition-colors p-2"
+              aria-label="Відкрити меню"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+            <nav className="container mx-auto px-4 py-4">
+              <ul className="space-y-4">
+                <li>
+                  <a 
+                    href="#about" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Про нас
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#gallery" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Галерея
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#features" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Додатки та функції
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#additional" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Додаткові товари
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#contacts" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Контакти
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        )}
       </header>
       
       <CartDrawer isOpen={isCartOpen} onClose={toggleCart} />
