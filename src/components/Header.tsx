@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Palette } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import CartDrawer from "./CartDrawer";
 
@@ -19,6 +19,14 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleColorCombination = () => {
+    const message = encodeURIComponent(
+      "Привіт! Мені потрібна допомога з комбінуванням кольорів постільної білизни. Чи можете допомогти підібрати гарне поєднання кольорів для мого інтер'єру?"
+    );
+    const instagramUrl = `https://www.instagram.com/direct/new/?text=${message}`;
+    window.open(instagramUrl, '_blank');
+  };
   
   return (
     <>
@@ -83,6 +91,25 @@ export default function Header() {
           </nav>
           
           <div className="flex items-center gap-4">
+            {/* Color Combination Button */}
+            <button 
+              onClick={handleColorCombination}
+              className="hidden md:flex items-center gap-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-4 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+              title="Допомога з комбінуванням кольорів"
+            >
+              <Palette size={18} />
+              <span className="text-sm">Комбінація кольорів</span>
+            </button>
+
+            {/* Mobile Color Combination Button */}
+            <button 
+              onClick={handleColorCombination}
+              className="md:hidden relative text-graphite hover:text-brandBrown transition-colors p-2"
+              title="Допомога з комбінуванням кольорів"
+            >
+              <Palette size={24} />
+            </button>
+            
             <button 
               onClick={toggleCart}
               className="relative text-graphite hover:text-brandBrown transition-colors p-2"
