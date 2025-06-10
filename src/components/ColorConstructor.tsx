@@ -103,7 +103,7 @@ export default function ColorConstructor() {
               <div className="relative w-full max-w-md mx-auto" style={{ aspectRatio: '4/3' }}>
                 {/* Базове зображення ліжка */}
                 <img 
-                  src="/assets/constructor/base.jpg" 
+                  src="/IMG_7340.JPG" 
                   alt="Базове зображення ліжка"
                   className="w-full h-full object-cover rounded-lg"
                   style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
@@ -111,62 +111,68 @@ export default function ColorConstructor() {
                 
                 {/* Простирадло - маска для нижньої частини ліжка */}
                 <div
-                  className="absolute inset-0 rounded-lg opacity-70"
+                  className="absolute inset-0 rounded-lg"
                   style={{
                     backgroundColor: selectedColors.sheet,
                     mixBlendMode: 'multiply',
                     zIndex: 1,
-                    clipPath: 'polygon(0% 60%, 100% 60%, 100% 100%, 0% 100%)'
+                    clipPath: 'polygon(0% 65%, 100% 65%, 100% 100%, 0% 100%)',
+                    opacity: 0.8
                   }}
                 />
                 
                 {/* Ковдра - маска для основної частини ковдри */}
                 <div
-                  className="absolute inset-0 rounded-lg opacity-80"
+                  className="absolute inset-0 rounded-lg"
                   style={{
                     backgroundColor: selectedColors.blanket,
                     mixBlendMode: 'multiply',
                     zIndex: 2,
-                    clipPath: 'polygon(5% 35%, 95% 35%, 90% 85%, 10% 85%)'
+                    clipPath: 'polygon(5% 40%, 95% 40%, 90% 80%, 10% 80%)',
+                    opacity: 0.85
                   }}
                 />
                 
                 {/* Ліва подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg opacity-80"
+                  className="absolute inset-0 rounded-lg"
                   style={{
                     backgroundColor: selectedColors.pillowLeft,
                     mixBlendMode: 'multiply',
                     zIndex: 3,
-                    clipPath: 'polygon(8% 15%, 45% 15%, 42% 45%, 12% 45%)'
+                    clipPath: 'polygon(8% 18%, 45% 18%, 42% 48%, 12% 48%)',
+                    opacity: 0.85
                   }}
                 />
                 
                 {/* Права подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg opacity-80"
+                  className="absolute inset-0 rounded-lg"
                   style={{
                     backgroundColor: selectedColors.pillowRight,
                     mixBlendMode: 'multiply',
                     zIndex: 4,
-                    clipPath: 'polygon(55% 15%, 92% 15%, 88% 45%, 58% 45%)'
+                    clipPath: 'polygon(55% 18%, 92% 18%, 88% 48%, 58% 48%)',
+                    opacity: 0.85
                   }}
                 />
 
-                {/* Індикатори зон для кращого розуміння */}
+                {/* Інтерактивні зони для кращого розуміння */}
                 <div className="absolute inset-0 pointer-events-none">
-                  {/* Підписи зон (показуються при hover) */}
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                    Ліва подушка
-                  </div>
-                  <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                    Права подушка
-                  </div>
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                    Ковдра
-                  </div>
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
-                    Простирадло
+                  {/* Підписи зон (показуються при hover на всьому контейнері) */}
+                  <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      Ліва подушка
+                    </div>
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      Права подушка
+                    </div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      Ковдра
+                    </div>
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      Простирадло
+                    </div>
                   </div>
                 </div>
               </div>
@@ -177,19 +183,19 @@ export default function ColorConstructor() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.sheet }} />
-                    <span>Простирадло</span>
+                    <span>{colors.find(c => c.hex === selectedColors.sheet)?.name || 'Індивідуальний'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.blanket }} />
-                    <span>Ковдра</span>
+                    <span>{colors.find(c => c.hex === selectedColors.blanket)?.name || 'Індивідуальний'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowLeft }} />
-                    <span>Ліва подушка</span>
+                    <span>{colors.find(c => c.hex === selectedColors.pillowLeft)?.name || 'Індивідуальний'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowRight }} />
-                    <span>Права подушка</span>
+                    <span>{colors.find(c => c.hex === selectedColors.pillowRight)?.name || 'Індивідуальний'}</span>
                   </div>
                 </div>
               </div>
