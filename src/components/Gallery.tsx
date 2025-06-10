@@ -110,7 +110,12 @@ export default function Gallery() {
     { 
       id: "6",
       title: "Ніжно-рожевий комплект",
-      imageUrl: "https://images.pexels.com/photos/1374125/pexels-photo-1374125.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "/IMG_7340.JPG",
+      images: [
+        "/IMG_7340.JPG",
+        "/IMG_7341.JPG",
+        "/IMG_7342.JPG"
+      ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
