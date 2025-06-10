@@ -6,12 +6,12 @@ export default function Gallery() {
     { 
       id: "palette",
       title: "Палітра кольорів",
-      imageUrl: "/photo_2025-06-10_02-17-13.jpg",
+      imageUrl: "/palette1.jpg",
       images: [
-        "/photo_2025-06-10_02-17-13.jpg",
-        "/photo_2025-06-10_02-17-11.jpg",
-        "/photo_2025-06-10_02-17-14.jpg",
-        "/photo_2025-06-10_02-17-16.jpg"
+        "/palette1.jpg",
+        "/palette2.jpg",
+        "/palette3.jpg",
+        "/palette4.jpg"
       ],
       setOptions: [],
       pillowOptions: [],
