@@ -1,28 +1,10 @@
 import React from "react";
 
 export default function Hero() {
-  const scrollToPalette = () => {
-    // Спочатку прокручуємо до галереї
+  const scrollToGallery = () => {
     const gallerySection = document.getElementById('gallery');
     if (gallerySection) {
       gallerySection.scrollIntoView({ behavior: 'smooth' });
-      
-      // Через невелику затримку фокусуємося на палітрі кольорів
-      setTimeout(() => {
-        const paletteCard = document.querySelector('[data-product-id="palette"]');
-        if (paletteCard) {
-          paletteCard.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
-          });
-          
-          // Додаємо ефект підсвічування
-          paletteCard.classList.add('ring-4', 'ring-gold', 'ring-opacity-50');
-          setTimeout(() => {
-            paletteCard.classList.remove('ring-4', 'ring-gold', 'ring-opacity-50');
-          }, 2000);
-        }
-      }, 500);
     }
   };
 
@@ -38,7 +20,7 @@ export default function Hero() {
             Теплі кольори, натуральна тканина та швидке пошиття – відчуй турботу з першого дотику
           </p>
           <button 
-            onClick={scrollToPalette}
+            onClick={scrollToGallery}
             className="mt-12 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-10 py-4 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
             Переглянути колекцію
