@@ -308,7 +308,7 @@ export default function ColorConstructor() {
                         <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.blanket }} />
                         <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.pillowLeft }} />
                         {combo.colors.pillowLeft !== combo.colors.pillowRight && (
-                          <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.pillowRight }} />
+                          <div className="w-4 h-4 rounded border border-gray-200\" style={{ backgroundColor: combo.colors.pillowRight }} />
                         )}
                       </div>
                       <span className="text-sm font-medium text-graphite group-hover:text-brandBrown transition-colors">
