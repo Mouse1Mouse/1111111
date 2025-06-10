@@ -22,9 +22,11 @@ export default function Header() {
   }, []);
 
   const handleColorCombination = () => {
-    // Відкриваємо Instagram профіль @miva_ua для відправки повідомлення
-    const instagramUrl = 'https://www.instagram.com/miva_ua/';
-    window.open(instagramUrl, '_blank');
+    // Прокручуємо до конструктора кольорів
+    const constructorSection = document.getElementById('constructor');
+    if (constructorSection) {
+      constructorSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleCartClick = (e: React.MouseEvent) => {
@@ -78,6 +80,14 @@ export default function Header() {
               </li>
               <li>
                 <a 
+                  href="#constructor" 
+                  className="text-graphite hover:text-brandBrown hover:underline hover:decoration-gold decoration-2 transition-all duration-200 font-medium"
+                >
+                  Конструктор
+                </a>
+              </li>
+              <li>
+                <a 
                   href="#features" 
                   className="text-graphite hover:text-brandBrown hover:underline hover:decoration-gold decoration-2 transition-all duration-200 font-medium"
                 >
@@ -108,17 +118,17 @@ export default function Header() {
             <button 
               onClick={handleColorCombination}
               className="hidden lg:flex items-center gap-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-3 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
-              title="Допомога з комбінуванням кольорів в Instagram"
+              title="Конструктор кольорових комбінацій"
             >
               <Palette size={16} />
-              <span>Комбінація кольорів</span>
+              <span>Конструктор кольорів</span>
             </button>
 
             {/* Color Combination Button - Mobile */}
             <button 
               onClick={handleColorCombination}
               className="lg:hidden relative text-graphite hover:text-brandBrown transition-colors p-2"
-              title="Допомога з комбінуванням кольорів в Instagram"
+              title="Конструктор кольорових комбінацій"
             >
               <Palette size={20} />
             </button>
@@ -173,6 +183,15 @@ export default function Header() {
                 </li>
                 <li>
                   <a 
+                    href="#constructor" 
+                    onClick={closeMobileMenu}
+                    className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
+                  >
+                    Конструктор
+                  </a>
+                </li>
+                <li>
+                  <a 
                     href="#features" 
                     onClick={closeMobileMenu}
                     className="block text-graphite hover:text-brandBrown transition-colors font-medium py-2"
@@ -207,7 +226,7 @@ export default function Header() {
                     className="w-full text-left bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-4 py-3 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2"
                   >
                     <Palette size={16} />
-                    <span>Комбінація кольорів</span>
+                    <span>Конструктор кольорів</span>
                   </button>
                 </li>
               </ul>
