@@ -256,7 +256,7 @@ export default function Gallery() {
     },
     { 
       id: "13",
-      title: "Мрамур комплект",
+      title: "Мармур комплект",
       imageUrl: "/marble1.jpg",
       images: [
         "/marble1.jpg",
