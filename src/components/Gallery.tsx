@@ -11,11 +11,7 @@ export default function Gallery() {
         "/photo_2025-06-10_02-17-13.jpg",
         "/photo_2025-06-10_02-17-11.jpg",
         "/photo_2025-06-10_02-17-14.jpg",
-        "/photo_2025-06-10_02-17-16.jpg",
-        "/photo_2025-06-10_02-17-11 copy.jpg",
-        "/photo_2025-06-10_02-17-13 copy.jpg",
-        "/photo_2025-06-10_02-17-14 copy.jpg",
-        "/photo_2025-06-10_02-17-16 copy.jpg"
+        "/photo_2025-06-10_02-17-16.jpg"
       ],
       setOptions: [],
       pillowOptions: [],
