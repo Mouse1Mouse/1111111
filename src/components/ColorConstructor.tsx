@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Palette, RotateCcw, Share2 } from 'lucide-react';
+import { Palette, RotateCcw, Share2, Info } from 'lucide-react';
 
 interface ColorOption {
   name: string;
@@ -8,7 +8,7 @@ interface ColorOption {
 }
 
 export default function ColorConstructor() {
-  // Палітра кольорів MIVA
+  // Палітра кольорів MIVA (20 кольорів)
   const colors: ColorOption[] = [
     { name: 'Молочний', hex: '#F5F3EA', description: 'Ніжний молочний відтінок' },
     { name: 'Капучино', hex: '#C9B39C', description: 'Теплий кавовий тон' },
@@ -39,6 +39,8 @@ export default function ColorConstructor() {
     pillowLeft: '#7FB069',   // Ліва подушка - зелений як на фото
     pillowRight: '#7FB069'   // Права подушка - зелений як на фото
   });
+
+  const [showInfo, setShowInfo] = useState(false);
 
   // Функція для зміни кольору елемента
   const handleColorChange = (element: keyof typeof selectedColors, color: string) => {
@@ -79,10 +81,29 @@ export default function ColorConstructor() {
     
     // Копіюємо текст в буфер обміну для зручності
     navigator.clipboard.writeText(message).catch(() => {
-      // Fallback для старих браузерів
       console.log('Не вдалося скопіювати текст');
     });
   };
+
+  // Готові комбінації
+  const presetCombinations = [
+    {
+      name: 'Класична',
+      colors: { sheet: '#F5F3EA', blanket: '#C9B39C', pillowLeft: '#E8D5C4', pillowRight: '#E8D5C4' }
+    },
+    {
+      name: 'Мінімалізм',
+      colors: { sheet: '#FFFFFF', blanket: '#B8B8B8', pillowLeft: '#4A4A4A', pillowRight: '#4A4A4A' }
+    },
+    {
+      name: 'Романтична',
+      colors: { sheet: '#F4C2C2', blanket: '#E8C5D1', pillowLeft: '#F4C2C2', pillowRight: '#E8C5D1' }
+    },
+    {
+      name: 'Оригінальна',
+      colors: { sheet: '#E8D5C4', blanket: '#7FB069', pillowLeft: '#7FB069', pillowRight: '#7FB069' }
+    }
+  ];
 
   return (
     <section id="constructor" className="py-24 bg-gradient-to-br from-[#fff7ed] to-[#fdf2e9]">
@@ -91,27 +112,74 @@ export default function ColorConstructor() {
           <h2 className="text-3xl md:text-4xl font-semibold text-brandBrown mb-4 text-shadow-sm">
             Конструктор кольорових комбінацій
           </h2>
-          <p className="text-lg text-graphite max-w-2xl mx-auto">
+          <p className="text-lg text-graphite max-w-2xl mx-auto mb-6">
             Експериментуйте з кольорами та створюйте унікальні комбінації для вашої постільної білизни
           </p>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className="inline-flex items-center gap-2 text-brandBrown hover:text-gold transition-colors"
+          >
+            <Info size={16} />
+            <span className="text-sm">Як користуватися конструктором</span>
+          </button>
         </div>
 
-        <div className="max-w-6xl mx-auto">
+        {/* Інструкції (показуються при кліку) */}
+        {showInfo && (
+          <div className="max-w-4xl mx-auto mb-12 bg-white rounded-xl shadow-lg p-6 border-l-4 border-brandBrown">
+            <h3 className="text-xl font-semibold text-brandBrown mb-4 text-center">
+              Як користуватися конструктором
+            </h3>
+            <div className="grid md:grid-cols-3 gap-6 text-center">
+              <div>
+                <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+                  1
+                </div>
+                <h4 className="font-medium text-graphite mb-2">Оберіть кольори</h4>
+                <p className="text-sm text-gray-600">
+                  Натискайте на кольорові кружечки, щоб змінити колір кожної частини постелі
+                </p>
+              </div>
+              <div>
+                <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+                  2
+                </div>
+                <h4 className="font-medium text-graphite mb-2">Переглядайте результат</h4>
+                <p className="text-sm text-gray-600">
+                  Бачите зміни в реальному часі на зображенні ліжка з збереженням текстури
+                </p>
+              </div>
+              <div>
+                <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+                  3
+                </div>
+                <h4 className="font-medium text-graphite mb-2">Поділіться комбінацією</h4>
+                <p className="text-sm text-gray-600">
+                  Натисніть "Поділитися" та напишіть нам в Instagram для замовлення
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 items-start">
             {/* Візуалізація ліжка */}
             <div className="bg-white rounded-2xl shadow-2xl p-6">
-              <div className="relative w-full max-w-md mx-auto" style={{ aspectRatio: '4/3' }}>
+              <div className="relative w-full max-w-lg mx-auto group" style={{ aspectRatio: '4/3' }}>
                 {/* Базове зображення ліжка */}
                 <img 
-                  src="/IMG_7340.JPG" 
+                  src="/photo_2025-06-10_19-09-52.jpg" 
                   alt="Базове зображення ліжка"
                   className="w-full h-full object-cover rounded-lg"
                   style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
                 />
                 
-                {/* Простирадло - маска для нижньої частини ліжка */}
+                {/* PNG-маски для кожної зони з mix-blend-mode */}
+                
+                {/* Простирадло - нижня частина ліжка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg transition-all duration-300"
                   style={{
                     backgroundColor: selectedColors.sheet,
                     mixBlendMode: 'multiply',
@@ -121,9 +189,9 @@ export default function ColorConstructor() {
                   }}
                 />
                 
-                {/* Ковдра - маска для основної частини ковдри */}
+                {/* Ковдра - основна частина */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg transition-all duration-300"
                   style={{
                     backgroundColor: selectedColors.blanket,
                     mixBlendMode: 'multiply',
@@ -135,7 +203,7 @@ export default function ColorConstructor() {
                 
                 {/* Ліва подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg transition-all duration-300"
                   style={{
                     backgroundColor: selectedColors.pillowLeft,
                     mixBlendMode: 'multiply',
@@ -147,7 +215,7 @@ export default function ColorConstructor() {
                 
                 {/* Права подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg transition-all duration-300"
                   style={{
                     backgroundColor: selectedColors.pillowRight,
                     mixBlendMode: 'multiply',
@@ -157,45 +225,46 @@ export default function ColorConstructor() {
                   }}
                 />
 
-                {/* Інтерактивні зони для кращого розуміння */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* Підписи зон (показуються при hover на всьому контейнері) */}
-                  <div className="group-hover:opacity-100 opacity-0 transition-opacity duration-300">
-                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      Ліва подушка
-                    </div>
-                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      Права подушка
-                    </div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      Ковдра
-                    </div>
-                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      Простирадло
-                    </div>
+                {/* Інтерактивні підписи зон */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                    Ліва подушка
+                  </div>
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                    Права подушка
+                  </div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                    Ковдра
+                  </div>
+                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                    Простирадло
                   </div>
                 </div>
               </div>
 
               {/* Поточна комбінація */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-sm font-medium text-graphite mb-3">Поточна комбінація:</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.sheet }} />
-                    <span>{colors.find(c => c.hex === selectedColors.sheet)?.name || 'Індивідуальний'}</span>
+              <div className="mt-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+                <h4 className="text-sm font-medium text-graphite mb-3 text-center">Поточна комбінація:</h4>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center gap-2 bg-white p-2 rounded">
+                    <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: selectedColors.sheet }} />
+                    <span className="font-medium">Простирадло:</span>
+                    <span className="text-brandBrown">{colors.find(c => c.hex === selectedColors.sheet)?.name || 'Індивідуальний'}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.blanket }} />
-                    <span>{colors.find(c => c.hex === selectedColors.blanket)?.name || 'Індивідуальний'}</span>
+                  <div className="flex items-center gap-2 bg-white p-2 rounded">
+                    <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: selectedColors.blanket }} />
+                    <span className="font-medium">Ковдра:</span>
+                    <span className="text-brandBrown">{colors.find(c => c.hex === selectedColors.blanket)?.name || 'Індивідуальний'}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowLeft }} />
-                    <span>{colors.find(c => c.hex === selectedColors.pillowLeft)?.name || 'Індивідуальний'}</span>
+                  <div className="flex items-center gap-2 bg-white p-2 rounded">
+                    <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: selectedColors.pillowLeft }} />
+                    <span className="font-medium">Ліва подушка:</span>
+                    <span className="text-brandBrown">{colors.find(c => c.hex === selectedColors.pillowLeft)?.name || 'Індивідуальний'}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowRight }} />
-                    <span>{colors.find(c => c.hex === selectedColors.pillowRight)?.name || 'Індивідуальний'}</span>
+                  <div className="flex items-center gap-2 bg-white p-2 rounded">
+                    <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: selectedColors.pillowRight }} />
+                    <span className="font-medium">Права подушка:</span>
+                    <span className="text-brandBrown">{colors.find(c => c.hex === selectedColors.pillowRight)?.name || 'Індивідуальний'}</span>
                   </div>
                 </div>
               </div>
@@ -214,13 +283,42 @@ export default function ColorConstructor() {
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold text-cream rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
                 >
                   <Share2 size={16} />
-                  <span>Поділитися</span>
+                  <span>Замовити</span>
                 </button>
               </div>
             </div>
 
             {/* Селектори кольорів */}
             <div className="space-y-6">
+              {/* Готові комбінації */}
+              <div className="bg-gradient-to-r from-cream to-beige rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
+                  <Palette size={20} />
+                  Готові комбінації
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {presetCombinations.map((combo, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedColors(combo.colors)}
+                      className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left group"
+                    >
+                      <div className="flex gap-2 mb-2">
+                        <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.sheet }} />
+                        <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.blanket }} />
+                        <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.pillowLeft }} />
+                        {combo.colors.pillowLeft !== combo.colors.pillowRight && (
+                          <div className="w-4 h-4 rounded border border-gray-200" style={{ backgroundColor: combo.colors.pillowRight }} />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-graphite group-hover:text-brandBrown transition-colors">
+                        {combo.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Простирадло */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
@@ -230,14 +328,14 @@ export default function ColorConstructor() {
                   />
                   Простирадло
                 </h3>
-                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
                   {colors.map((color) => (
                     <button
                       key={`sheet-${color.hex}`}
                       onClick={() => handleColorChange('sheet', color.hex)}
                       className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
                         selectedColors.sheet === color.hex 
-                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50' 
+                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50 scale-110' 
                           : 'border-gray-300 hover:border-brandBrown'
                       }`}
                       style={{ backgroundColor: color.hex }}
@@ -256,14 +354,14 @@ export default function ColorConstructor() {
                   />
                   Ковдра
                 </h3>
-                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
                   {colors.map((color) => (
                     <button
                       key={`blanket-${color.hex}`}
                       onClick={() => handleColorChange('blanket', color.hex)}
                       className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
                         selectedColors.blanket === color.hex 
-                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50' 
+                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50 scale-110' 
                           : 'border-gray-300 hover:border-brandBrown'
                       }`}
                       style={{ backgroundColor: color.hex }}
@@ -273,123 +371,83 @@ export default function ColorConstructor() {
                 </div>
               </div>
 
-              {/* Ліва подушка */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: selectedColors.pillowLeft }}
-                  />
-                  Ліва подушка
-                </h3>
-                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                  {colors.map((color) => (
-                    <button
-                      key={`pillow-left-${color.hex}`}
-                      onClick={() => handleColorChange('pillowLeft', color.hex)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
-                        selectedColors.pillowLeft === color.hex 
-                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50' 
-                          : 'border-gray-300 hover:border-brandBrown'
-                      }`}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
+              {/* Подушки */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Ліва подушка */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: selectedColors.pillowLeft }}
                     />
-                  ))}
+                    Ліва подушка
+                  </h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                    {colors.map((color) => (
+                      <button
+                        key={`pillow-left-${color.hex}`}
+                        onClick={() => handleColorChange('pillowLeft', color.hex)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
+                          selectedColors.pillowLeft === color.hex 
+                            ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50 scale-110' 
+                            : 'border-gray-300 hover:border-brandBrown'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Права подушка */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: selectedColors.pillowRight }}
+                    />
+                    Права подушка
+                  </h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                    {colors.map((color) => (
+                      <button
+                        key={`pillow-right-${color.hex}`}
+                        onClick={() => handleColorChange('pillowRight', color.hex)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
+                          selectedColors.pillowRight === color.hex 
+                            ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50 scale-110' 
+                            : 'border-gray-300 hover:border-brandBrown'
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Права подушка */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded border border-gray-300"
-                    style={{ backgroundColor: selectedColors.pillowRight }}
-                  />
-                  Права подушка
-                </h3>
-                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                  {colors.map((color) => (
-                    <button
-                      key={`pillow-right-${color.hex}`}
-                      onClick={() => handleColorChange('pillowRight', color.hex)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
-                        selectedColors.pillowRight === color.hex 
-                          ? 'border-brandBrown ring-2 ring-brandBrown ring-opacity-50' 
-                          : 'border-gray-300 hover:border-brandBrown'
-                      }`}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Швидкі комбінації */}
-              <div className="bg-gradient-to-r from-cream to-beige rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-brandBrown mb-4 flex items-center gap-2">
-                  <Palette size={20} />
-                  Готові комбінації
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Швидкі дії для подушок */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="flex justify-center gap-4">
                   <button
-                    onClick={() => setSelectedColors({
-                      sheet: '#F5F3EA', blanket: '#C9B39C', 
-                      pillowLeft: '#E8D5C4', pillowRight: '#E8D5C4'
-                    })}
-                    className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left"
+                    onClick={() => setSelectedColors(prev => ({ ...prev, pillowRight: prev.pillowLeft }))}
+                    className="px-4 py-2 bg-white hover:bg-gray-100 text-graphite rounded-lg transition-colors text-sm border"
                   >
-                    <div className="flex gap-2 mb-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#F5F3EA' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#C9B39C' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#E8D5C4' }} />
-                    </div>
-                    <span className="text-sm font-medium text-graphite">Класична</span>
+                    Однакові подушки
                   </button>
-                  
                   <button
-                    onClick={() => setSelectedColors({
-                      sheet: '#FFFFFF', blanket: '#B8B8B8', 
-                      pillowLeft: '#4A4A4A', pillowRight: '#4A4A4A'
-                    })}
-                    className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left"
+                    onClick={() => {
+                      const leftColor = selectedColors.pillowLeft;
+                      const rightColor = selectedColors.pillowRight;
+                      setSelectedColors(prev => ({ 
+                        ...prev, 
+                        pillowLeft: rightColor, 
+                        pillowRight: leftColor 
+                      }));
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-100 text-graphite rounded-lg transition-colors text-sm border"
                   >
-                    <div className="flex gap-2 mb-2">
-                      <div className="w-4 h-4 rounded border" style={{ backgroundColor: '#FFFFFF' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#B8B8B8' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#4A4A4A' }} />
-                    </div>
-                    <span className="text-sm font-medium text-graphite">Мінімалізм</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setSelectedColors({
-                      sheet: '#F4C2C2', blanket: '#E8C5D1', 
-                      pillowLeft: '#F4C2C2', pillowRight: '#E8C5D1'
-                    })}
-                    className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left"
-                  >
-                    <div className="flex gap-2 mb-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#F4C2C2' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#E8C5D1' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#F4C2C2' }} />
-                    </div>
-                    <span className="text-sm font-medium text-graphite">Романтична</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setSelectedColors({
-                      sheet: '#E8D5C4', blanket: '#7FB069', 
-                      pillowLeft: '#7FB069', pillowRight: '#7FB069'
-                    })}
-                    className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left"
-                  >
-                    <div className="flex gap-2 mb-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#E8D5C4' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#7FB069' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#7FB069' }} />
-                    </div>
-                    <span className="text-sm font-medium text-graphite">Оригінальна</span>
+                    Поміняти місцями
                   </button>
                 </div>
               </div>
@@ -397,38 +455,19 @@ export default function ColorConstructor() {
           </div>
         </div>
 
-        {/* Інструкції */}
-        <div className="max-w-4xl mx-auto mt-12 bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold text-brandBrown mb-4 text-center">
-            Як користуватися конструктором
+        {/* Додаткова інформація */}
+        <div className="max-w-4xl mx-auto mt-12 bg-white rounded-xl shadow-lg p-6 text-center">
+          <h3 className="text-xl font-semibold text-brandBrown mb-4">
+            💡 Поради від MIVA
           </h3>
-          <div className="grid md:grid-cols-3 gap-6 text-center">
+          <div className="grid md:grid-cols-2 gap-6 text-sm text-graphite">
             <div>
-              <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
-                1
-              </div>
-              <h4 className="font-medium text-graphite mb-2">Оберіть кольори</h4>
-              <p className="text-sm text-gray-600">
-                Натискайте на кольорові кружечки, щоб змінити колір кожної частини постелі
-              </p>
+              <h4 className="font-medium mb-2">Гармонійні поєднання:</h4>
+              <p>Використовуйте кольори з однієї температурної гами (теплі або холодні) для створення спокійної атмосфери.</p>
             </div>
             <div>
-              <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
-                2
-              </div>
-              <h4 className="font-medium text-graphite mb-2">Переглядайте результат</h4>
-              <p className="text-sm text-gray-600">
-                Бачите зміни в реальному часі на зображенні ліжка
-              </p>
-            </div>
-            <div>
-              <div className="w-12 h-12 bg-brandBrown text-cream rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
-                3
-              </div>
-              <h4 className="font-medium text-graphite mb-2">Поділіться комбінацією</h4>
-              <p className="text-sm text-gray-600">
-                Натисніть "Поділитися" та напишіть нам в Instagram для замовлення
-              </p>
+              <h4 className="font-medium mb-2">Контрастні акценти:</h4>
+              <p>Додайте яскравості за допомогою контрастних подушок - це легко змінити настрій кімнати.</p>
             </div>
           </div>
         </div>
