@@ -32,12 +32,12 @@ export default function ColorConstructor() {
     { name: 'Бордо', hex: '#800020', description: 'Благородний бордовий' }
   ];
 
-  // Стани для вибраних кольорів
+  // Стани для вибраних кольорів (початкові кольори як на фото)
   const [selectedColors, setSelectedColors] = useState({
-    sheet: colors[0].hex,        // Простирадло
-    blanket: colors[1].hex,      // Ковдра
-    pillowLeft: colors[2].hex,   // Ліва подушка
-    pillowRight: colors[2].hex   // Права подушка
+    sheet: '#E8D5C4',        // Простирадло - бежевий як на фото
+    blanket: '#7FB069',      // Ковдра - зелений як на фото
+    pillowLeft: '#7FB069',   // Ліва подушка - зелений як на фото
+    pillowRight: '#7FB069'   // Права подушка - зелений як на фото
   });
 
   // Функція для зміни кольору елемента
@@ -48,23 +48,23 @@ export default function ColorConstructor() {
     }));
   };
 
-  // Скидання до початкових кольорів
+  // Скидання до початкових кольорів (як на оригінальному фото)
   const resetColors = () => {
     setSelectedColors({
-      sheet: colors[0].hex,
-      blanket: colors[1].hex,
-      pillowLeft: colors[2].hex,
-      pillowRight: colors[2].hex
+      sheet: '#E8D5C4',
+      blanket: '#7FB069',
+      pillowLeft: '#7FB069',
+      pillowRight: '#7FB069'
     });
   };
 
   // Поділитися комбінацією в Instagram
   const shareToInstagram = () => {
     const selectedColorNames = {
-      sheet: colors.find(c => c.hex === selectedColors.sheet)?.name || 'Невідомий',
-      blanket: colors.find(c => c.hex === selectedColors.blanket)?.name || 'Невідомий',
-      pillowLeft: colors.find(c => c.hex === selectedColors.pillowLeft)?.name || 'Невідомий',
-      pillowRight: colors.find(c => c.hex === selectedColors.pillowRight)?.name || 'Невідомий'
+      sheet: colors.find(c => c.hex === selectedColors.sheet)?.name || 'Індивідуальний',
+      blanket: colors.find(c => c.hex === selectedColors.blanket)?.name || 'Індивідуальний',
+      pillowLeft: colors.find(c => c.hex === selectedColors.pillowLeft)?.name || 'Індивідуальний',
+      pillowRight: colors.find(c => c.hex === selectedColors.pillowRight)?.name || 'Індивідуальний'
     };
 
     const message = `Моя комбінація кольорів MIVA:
@@ -100,7 +100,7 @@ export default function ColorConstructor() {
           <div className="grid lg:grid-cols-2 gap-8 items-start">
             {/* Візуалізація ліжка */}
             <div className="bg-white rounded-2xl shadow-2xl p-6">
-              <div className="relative w-full max-w-md mx-auto" style={{ aspectRatio: '650/700' }}>
+              <div className="relative w-full max-w-md mx-auto" style={{ aspectRatio: '4/3' }}>
                 {/* Базове зображення ліжка */}
                 <img 
                   src="/assets/constructor/base.jpg" 
@@ -109,69 +109,89 @@ export default function ColorConstructor() {
                   style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
                 />
                 
-                {/* Простирадло */}
+                {/* Простирадло - маска для нижньої частини ліжка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg opacity-70"
                   style={{
                     backgroundColor: selectedColors.sheet,
                     mixBlendMode: 'multiply',
                     zIndex: 1,
-                    maskImage: 'url(/assets/constructor/sheet.png)',
-                    WebkitMaskImage: 'url(/assets/constructor/sheet.png)',
-                    maskSize: 'cover',
-                    WebkitMaskSize: 'cover',
-                    maskRepeat: 'no-repeat',
-                    WebkitMaskRepeat: 'no-repeat'
+                    clipPath: 'polygon(0% 60%, 100% 60%, 100% 100%, 0% 100%)'
                   }}
                 />
                 
-                {/* Ковдра */}
+                {/* Ковдра - маска для основної частини ковдри */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg opacity-80"
                   style={{
                     backgroundColor: selectedColors.blanket,
                     mixBlendMode: 'multiply',
                     zIndex: 2,
-                    maskImage: 'url(/assets/constructor/blanket.png)',
-                    WebkitMaskImage: 'url(/assets/constructor/blanket.png)',
-                    maskSize: 'cover',
-                    WebkitMaskSize: 'cover',
-                    maskRepeat: 'no-repeat',
-                    WebkitMaskRepeat: 'no-repeat'
+                    clipPath: 'polygon(5% 35%, 95% 35%, 90% 85%, 10% 85%)'
                   }}
                 />
                 
                 {/* Ліва подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg opacity-80"
                   style={{
                     backgroundColor: selectedColors.pillowLeft,
                     mixBlendMode: 'multiply',
                     zIndex: 3,
-                    maskImage: 'url(/assets/constructor/pillow_left.png)',
-                    WebkitMaskImage: 'url(/assets/constructor/pillow_left.png)',
-                    maskSize: 'cover',
-                    WebkitMaskSize: 'cover',
-                    maskRepeat: 'no-repeat',
-                    WebkitMaskRepeat: 'no-repeat'
+                    clipPath: 'polygon(8% 15%, 45% 15%, 42% 45%, 12% 45%)'
                   }}
                 />
                 
                 {/* Права подушка */}
                 <div
-                  className="absolute inset-0 rounded-lg"
+                  className="absolute inset-0 rounded-lg opacity-80"
                   style={{
                     backgroundColor: selectedColors.pillowRight,
                     mixBlendMode: 'multiply',
                     zIndex: 4,
-                    maskImage: 'url(/assets/constructor/pillow_right.png)',
-                    WebkitMaskImage: 'url(/assets/constructor/pillow_right.png)',
-                    maskSize: 'cover',
-                    WebkitMaskSize: 'cover',
-                    maskRepeat: 'no-repeat',
-                    WebkitMaskRepeat: 'no-repeat'
+                    clipPath: 'polygon(55% 15%, 92% 15%, 88% 45%, 58% 45%)'
                   }}
                 />
+
+                {/* Індикатори зон для кращого розуміння */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Підписи зон (показуються при hover) */}
+                  <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                    Ліва подушка
+                  </div>
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                    Права подушка
+                  </div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                    Ковдра
+                  </div>
+                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity">
+                    Простирадло
+                  </div>
+                </div>
+              </div>
+
+              {/* Поточна комбінація */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-graphite mb-3">Поточна комбінація:</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.sheet }} />
+                    <span>Простирадло</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.blanket }} />
+                    <span>Ковдра</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowLeft }} />
+                    <span>Ліва подушка</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded border" style={{ backgroundColor: selectedColors.pillowRight }} />
+                    <span>Права подушка</span>
+                  </div>
+                </div>
               </div>
 
               {/* Кнопки дій */}
@@ -353,17 +373,17 @@ export default function ColorConstructor() {
                   
                   <button
                     onClick={() => setSelectedColors({
-                      sheet: '#B8E6D3', blanket: '#A8D5A8', 
-                      pillowLeft: '#B8E6D3', pillowRight: '#A8D5A8'
+                      sheet: '#E8D5C4', blanket: '#7FB069', 
+                      pillowLeft: '#7FB069', pillowRight: '#7FB069'
                     })}
                     className="p-3 bg-white rounded-lg hover:shadow-md transition-shadow duration-200 text-left"
                   >
                     <div className="flex gap-2 mb-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#B8E6D3' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#A8D5A8' }} />
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#B8E6D3' }} />
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#E8D5C4' }} />
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#7FB069' }} />
+                      <div className="w-4 h-4 rounded" style={{ backgroundColor: '#7FB069' }} />
                     </div>
-                    <span className="text-sm font-medium text-graphite">Природна</span>
+                    <span className="text-sm font-medium text-graphite">Оригінальна</span>
                   </button>
                 </div>
               </div>
