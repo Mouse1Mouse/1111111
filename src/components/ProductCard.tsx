@@ -418,6 +418,19 @@ export default function ProductCard({ item }: ProductCardProps) {
             </div>
           )}
 
+          {/* Кнопка комбінації кольорів */}
+          <div className="bg-gradient-to-r from-cream to-beige p-3 rounded-lg mb-4">
+            <p className="text-brandBrown font-medium text-sm mb-2 text-center">
+              🎨 Хочете інший колір або комбінацію?
+            </p>
+            <button
+              onClick={handleColorCombination}
+              className="w-full bg-gradient-to-r from-gold to-brandBrown hover:to-gold px-4 py-2 rounded-lg font-medium text-cream transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-sm"
+            >
+              Написати в Instagram
+            </button>
+          </div>
+
           <button
             onClick={handleAddToCart}
             className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mt-4"
