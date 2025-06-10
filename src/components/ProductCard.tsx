@@ -135,7 +135,10 @@ export default function ProductCard({ item }: ProductCardProps) {
   if (item.isPalette) {
     return (
       <>
-        <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300">
+        <div 
+          data-product-id={item.id}
+          className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-all duration-300"
+        >
           <figure className="relative group">
             <div className="relative overflow-hidden">
               <img
@@ -205,10 +208,16 @@ export default function ProductCard({ item }: ProductCardProps) {
           </figure>
 
           <div className="p-6 text-center">
-            <p className="text-graphite text-lg">
+            <p className="text-graphite text-lg mb-4">
               Переглядайте всі доступні кольори постільної білизни. 
               Натисніть на зображення для детального перегляду.
             </p>
+            <div className="bg-gradient-to-r from-cream to-beige p-4 rounded-lg">
+              <p className="text-brandBrown font-medium text-sm">
+                💡 Потрібна допомога з комбінуванням кольорів? 
+                Скористайтеся кнопкою "Комбінація кольорів" у верхньому меню!
+              </p>
+            </div>
           </div>
         </div>
 
@@ -228,7 +237,10 @@ export default function ProductCard({ item }: ProductCardProps) {
 
   return (
     <>
-      <div className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300">
+      <div 
+        data-product-id={item.id}
+        className="bg-white rounded-xl overflow-hidden shadow-2xl border-2 border-gold/20 hover:border-brandBrown/20 transition-colors duration-300"
+      >
         <figure className="relative group">
           <div className="relative overflow-hidden">
             <img
