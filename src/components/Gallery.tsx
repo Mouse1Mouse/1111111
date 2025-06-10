@@ -194,12 +194,7 @@ export default function Gallery() {
     { 
       id: "10",
       title: "Блакитний комплект",
-      imageUrl: "/photo_2025-06-10_18-28-37.jpg",
-      images: [
-        "/photo_2025-06-10_18-28-37.jpg",
-        "/photo_2025-06-10_18-28-39.jpg",
-        "/photo_2025-06-10_18-28-42.jpg"
-      ],
+      imageUrl: "https://images.pexels.com/photos/1374125/pexels-photo-1374125.jpeg?auto=compress&cs=tinysrgb&w=1200",
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1250 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1350 },
