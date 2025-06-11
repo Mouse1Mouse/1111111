@@ -11,24 +11,31 @@
 [form-notifications]
   [[form-notifications.email]]
     form = "offline-order"
-    to = "misha.taracuk@gmail.com"
-    subject = "Нове замовлення MIVA"
+    to = "mivatextil@gmail.com"
+    subject = "ВАЖЛИВО! Нове замовлення з сайту MIVA"
     template = """
-Нове замовлення на сайті MIVA:
+ВАЖЛИВО! Нове замовлення на сайті MIVA:
 
+=== ІНФОРМАЦІЯ ПРО КЛІЄНТА ===
 ПІБ: {{ fullName }}
 Телефон: {{ phone }}
-Контакт: {{ contact }}
-Місто: {{ city }}
-Відділення: {{ branch }}
+Контакт (Email/Viber): {{ contact }}
 
-Замовлення:
+=== ДОСТАВКА ===
+Місто: {{ city }}
+Відділення Нової Пошти: {{ branch }}
+
+=== ЗАМОВЛЕННЯ ===
 {{ orderSummary }}
 
-Загальна сума: {{ totalSum }} грн
+=== ЗАГАЛЬНА СУМА ===
+{{ totalSum }} грн
 
-Коментар: {{ comments }}
+=== КОМЕНТАР КЛІЄНТА ===
+{{ comments }}
 
 ---
-Відправлено з сайту MIVA
+⚠️ ВАЖЛИВО: Це замовлення потребує негайної обробки!
+Відправлено з сайту MIVA (miva.com.ua)
+Дата: {{ created_at }}
     """

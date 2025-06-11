@@ -29,6 +29,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [contact, setContact] = useState("");
+  const [comments, setComments] = useState("");
 
   // Form submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,44 +186,69 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     setIsSubmitting(true);
     
     try {
-      // Create invoice directly with Monobank API
-      const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Prepare form data for Netlify
+      const formData = new FormData();
+      formData.append('form-name', 'offline-order');
+      formData.append('fullName', fullName);
+      formData.append('phone', phone);
+      formData.append('contact', contact);
+      formData.append('city', selectedCityName);
+      formData.append('branch', selectedBranchName);
+      formData.append('orderSummary', orderSummary);
+      formData.append('totalSum', totalSum.toString());
+      formData.append('comments', comments);
       
-      const invoiceData = {
-        amount: totalSum * 100, // Convert to kopecks
-        ccy: 980, // UAH currency code
-        merchantPaymInfo: {
-          reference: orderId,
-          destination: "Оплата замовлення MIVA",
-          comment: `Замовлення від ${fullName}, тел: ${phone}`,
-          customerEmails: [contact.includes('@') ? contact : '']
-        },
-        redirectUrl: `${window.location.origin}/success.html?payment=monopay&orderId=${orderId}`,
-        webHookUrl: `${window.location.origin}/webhook/monobank`
-      };
-
-      const response = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+      // Submit to Netlify Forms
+      const response = await fetch('/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Token': MONOBANK_TOKEN
-        },
-        body: JSON.stringify(invoiceData)
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(formData as any).toString()
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.invoiceId) {
-        // Invoice created successfully, store the payment URL
-        setInvoiceUrl(result.pageUrl);
+      if (response.ok) {
+        // Form submitted successfully
         setIsFormSubmitted(true);
+        
+        // Also try to create Monobank invoice for online payment option
+        try {
+          const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          const invoiceData = {
+            amount: totalSum * 100, // Convert to kopecks
+            ccy: 980, // UAH currency code
+            merchantPaymInfo: {
+              reference: orderId,
+              destination: "Оплата замовлення MIVA",
+              comment: `Замовлення від ${fullName}, тел: ${phone}`,
+              customerEmails: [contact.includes('@') ? contact : '']
+            },
+            redirectUrl: `${window.location.origin}/success.html?payment=monopay&orderId=${orderId}`,
+            webHookUrl: `${window.location.origin}/webhook/monobank`
+          };
+
+          const monoResponse = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Token': MONOBANK_TOKEN
+            },
+            body: JSON.stringify(invoiceData)
+          });
+
+          const monoResult = await monoResponse.json();
+
+          if (monoResponse.ok && monoResult.invoiceId) {
+            setInvoiceUrl(monoResult.pageUrl);
+          }
+        } catch (monoError) {
+          console.log('Monobank invoice creation failed, but order was submitted successfully');
+        }
       } else {
-        console.error('Monobank API error:', result);
-        alert('Помилка при створенні рахунку. Спробуйте ще раз.');
+        throw new Error('Form submission failed');
       }
     } catch (error) {
-      console.error('Error creating invoice:', error);
-      alert('Помилка при відправці замовлення. Спробуйте ще раз.');
+      console.error('Error submitting order:', error);
+      alert('Помилка при відправці замовлення. Спробуйте ще раз або зв\'яжіться з нами напряму.');
     } finally {
       setIsSubmitting(false);
     }
@@ -310,10 +336,27 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       {!isFormSubmitted ? (
         // Order Form
         <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
+          {/* Hidden form for Netlify */}
+          <form name="offline-order" netlify hidden>
+            <input type="text" name="fullName" />
+            <input type="text" name="phone" />
+            <input type="text" name="contact" />
+            <input type="text" name="city" />
+            <input type="text" name="branch" />
+            <textarea name="orderSummary"></textarea>
+            <input type="text" name="totalSum" />
+            <textarea name="comments"></textarea>
+          </form>
+
           <form
             onSubmit={handleSubmit}
             className="space-y-4"
+            name="offline-order"
+            method="POST"
+            data-netlify="true"
           >
+            <input type="hidden" name="form-name" value="offline-order" />
+            
             {/* ПІБ */}
             <label className="block">
               <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
@@ -423,6 +466,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               <span className="text-lg font-medium text-graphite">Загальна сума:</span>
               <span className="text-lg font-semibold text-brandBrown">{totalSum} грн</span>
             </div>
+            <input type="hidden" name="totalSum" value={totalSum} />
 
             {/* Коментар */}
             <label className="block">
@@ -432,6 +476,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               <textarea
                 name="comments"
                 rows={3}
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
                 disabled={isSubmitting}
                 placeholder="Додаткові побажання щодо замовлення..."
                 className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors resize-none disabled:bg-gray-100"
@@ -444,7 +490,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               disabled={!isFormValid() || isSubmitting}
               className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
             >
-              {isSubmitting ? 'Створюємо рахунок...' : 'Оформити замовлення'}
+              {isSubmitting ? 'Відправляємо замовлення...' : 'Відправити замовлення'}
             </button>
           </form>
 
@@ -467,8 +513,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
-            <h3 className="text-2xl font-semibold text-brandBrown mb-2">Рахунок створено!</h3>
-            <p className="text-graphite mb-4">Тепер оберіть спосіб оплати:</p>
+            <h3 className="text-2xl font-semibold text-brandBrown mb-2">Замовлення відправлено!</h3>
+            <p className="text-graphite mb-4">Ваше замовлення успішно надіслано на обробку. Ми зв'яжемося з вами найближчим часом.</p>
+            <p className="text-sm text-gray-600 mb-6">Тепер ви можете обрати спосіб оплати:</p>
           </div>
 
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -480,26 +527,28 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
           <div className="space-y-4">
             {/* Direct Monobank Payment Option */}
-            <button
-              onClick={handleDirectPayment}
-              disabled={isPaymentProcessing || !invoiceUrl}
-              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-4">
-                  <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                  </svg>
+            {invoiceUrl && (
+              <button
+                onClick={handleDirectPayment}
+                disabled={isPaymentProcessing}
+                className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-4">
+                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-graphite">
+                      Оплатити онлайн через Monobank
+                    </h3>
+                    <p className="text-sm text-gray-600">Картою онлайн (безпечно)</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-graphite">
-                    Оплатити онлайн через Monobank
-                  </h3>
-                  <p className="text-sm text-gray-600">Картою онлайн (безпечно)</p>
-                </div>
-              </div>
-              <div className="text-green-600 font-medium">Швидко</div>
-            </button>
+                <div className="text-green-600 font-medium">Швидко</div>
+              </button>
+            )}
 
             {/* MonoPay SDK Option (fallback) */}
             <button
