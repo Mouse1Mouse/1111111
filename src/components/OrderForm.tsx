@@ -38,6 +38,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [contact, setContact] = useState("");
   const [comments, setComments] = useState("");
 
+  // Payment method selection
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'bank' | 'monopay' | null>(null);
+  const [showPaymentSelection, setShowPaymentSelection] = useState(false);
+
   // Form submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
@@ -183,8 +187,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
            items.length > 0;
   };
 
-  // Netlify Forms submission using fetch (SPA method)
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Handle initial form submission (show payment selection)
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!isFormValid()) {
@@ -192,6 +196,11 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       return;
     }
 
+    setShowPaymentSelection(true);
+  };
+
+  // Handle bank transfer payment
+  const handleBankPayment = async () => {
     setIsSubmitting(true);
     
     try {
@@ -205,7 +214,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         branch: selectedBranchName,
         orderSummary,
         totalSum: totalSum.toString(),
-        comments
+        comments: comments + "\n\nСпосіб оплати: Банківський переказ"
       };
 
       // Submit to Netlify using fetch
@@ -228,12 +237,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   };
 
   const handleMonoPayment = async () => {
-    if (isPaymentProcessing || !isFormValid()) {
-      if (!isFormValid()) {
-        alert('Будь ласка, заповніть всі обов\'язкові поля перед оплатою');
-      }
-      return;
-    }
+    if (isPaymentProcessing) return;
     
     setIsPaymentProcessing(true);
     
@@ -265,7 +269,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               branch: selectedBranchName,
               orderSummary,
               totalSum: totalSum.toString(),
-              comments: comments + `\n\nОПЛАЧЕНО через MonoPay. ID замовлення: ${orderId}`
+              comments: comments + `\n\nСпосіб оплати: MonoPay (ОПЛАЧЕНО). ID замовлення: ${orderId}`
             };
 
             await fetch("/", {
@@ -302,6 +306,97 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     }
   };
 
+  // If showing payment selection
+  if (showPaymentSelection) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center mb-6">
+          <button
+            onClick={() => setShowPaymentSelection(false)}
+            className="text-graphite hover:text-brandBrown transition-colors mr-4"
+            disabled={isSubmitting || isPaymentProcessing}
+          >
+            ← Назад до форми
+          </button>
+          <h2 className="text-2xl font-semibold text-brandBrown">Оберіть спосіб оплати</h2>
+        </div>
+
+        <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6">
+          {/* Order Summary */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="font-semibold text-brandBrown mb-2">Ваше замовлення:</h3>
+            <div className="text-sm text-graphite mb-2">
+              <strong>{fullName}</strong><br />
+              {phone}<br />
+              {selectedCityName}, {selectedBranchName}
+            </div>
+            <div className="text-sm text-graphite mb-3 whitespace-pre-line">
+              {orderSummary}
+            </div>
+            <div className="text-lg font-bold text-brandBrown">
+              Загальна сума: {totalSum} грн
+            </div>
+          </div>
+
+          {/* Payment Options */}
+          <div className="space-y-4">
+            {/* Bank Transfer */}
+            <button
+              onClick={handleBankPayment}
+              disabled={isSubmitting || isPaymentProcessing}
+              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-brandBrown to-gold rounded-lg flex items-center justify-center mr-4">
+                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-graphite">
+                      {isSubmitting ? 'Обробка замовлення...' : 'Банківський переказ'}
+                    </h3>
+                    <p className="text-sm text-gray-600">Оплата на рахунок ФОП</p>
+                  </div>
+                </div>
+                <div className="text-brandBrown font-medium">Безкоштовно</div>
+              </div>
+            </button>
+
+            {/* MonoPay */}
+            <button
+              onClick={handleMonoPayment}
+              disabled={isPaymentProcessing || isSubmitting}
+              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
+                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-graphite">
+                      {isPaymentProcessing ? 'Обробка платежу...' : 'Оплата картою онлайн'}
+                    </h3>
+                    <p className="text-sm text-gray-600">MonoPay (миттєво)</p>
+                  </div>
+                </div>
+                <div className="text-blue-600 font-medium">Швидко</div>
+              </div>
+            </button>
+          </div>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            Після вибору способу оплати ваше замовлення буде оброблено
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center mb-6">
@@ -318,7 +413,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       {/* Order Form */}
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleFormSubmit}
           className="space-y-4"
         >
           {/* ПІБ */}
@@ -452,46 +547,14 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             />
           </label>
 
-          {/* Кнопка відправити замовлення */}
+          {/* Кнопка продовжити до оплати */}
           <button
             type="submit"
             disabled={!isFormValid() || isSubmitting || isPaymentProcessing}
-            className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+            className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
-            {isSubmitting ? 'Відправляємо замовлення...' : 'Відправити замовлення'}
+            Продовжити до оплати
           </button>
-
-          {/* Альтернативні способи оплати */}
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-center text-sm text-gray-600 mb-4">
-              Або оберіть спосіб онлайн-оплати:
-            </p>
-            
-            <div className="space-y-3">
-              {/* MonoPay SDK Option */}
-              <button
-                type="button"
-                onClick={handleMonoPayment}
-                disabled={isPaymentProcessing || !isFormValid() || isSubmitting}
-                className="w-full flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-graphite text-sm">
-                      {isPaymentProcessing ? 'Обробка...' : 'Оплатити картою онлайн'}
-                    </h3>
-                    <p className="text-xs text-gray-600">MonoPay (безпечно)</p>
-                  </div>
-                </div>
-                <div className="text-blue-600 font-medium text-sm">Швидко</div>
-              </button>
-            </div>
-          </div>
         </form>
 
         {!NOVA_POSHTA_KEY && (
