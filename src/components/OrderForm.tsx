@@ -186,19 +186,17 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     setIsSubmitting(true);
     
     try {
-      // Prepare form data for Netlify
-      const formData = new FormData();
-      formData.append('form-name', 'offline-order');
-      formData.append('fullName', fullName);
-      formData.append('phone', phone);
-      formData.append('contact', contact);
-      formData.append('city', selectedCityName);
-      formData.append('branch', selectedBranchName);
-      formData.append('orderSummary', orderSummary);
-      formData.append('totalSum', totalSum.toString());
-      formData.append('comments', comments);
+      // Netlify Forms submission - використовуємо стандартну відправку форми
+      const form = e.target as HTMLFormElement;
+      const formData = new FormData(form);
       
-      // Submit to Netlify Forms
+      // Додаємо додаткові поля, які можуть не бути в формі
+      formData.set('orderSummary', orderSummary);
+      formData.set('totalSum', totalSum.toString());
+      formData.set('city', selectedCityName);
+      formData.set('branch', selectedBranchName);
+      
+      // Відправляємо на Netlify
       const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -206,10 +204,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       });
 
       if (response.ok) {
-        // Form submitted successfully
+        // Форма успішно відправлена
         setIsFormSubmitted(true);
         
-        // Also try to create Monobank invoice for online payment option
+        // Спробуємо створити рахунок Monobank для онлайн оплати (опціонально)
         try {
           const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
@@ -336,8 +334,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       {!isFormSubmitted ? (
         // Order Form
         <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
-          {/* Hidden form for Netlify */}
-          <form name="offline-order" netlify hidden>
+          {/* Hidden form for Netlify detection */}
+          <form name="offline-order" netlify="true" hidden>
             <input type="text" name="fullName" />
             <input type="text" name="phone" />
             <input type="text" name="contact" />
@@ -349,11 +347,11 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           </form>
 
           <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
             name="offline-order"
             method="POST"
             data-netlify="true"
+            onSubmit={handleSubmit}
+            className="space-y-4"
           >
             <input type="hidden" name="form-name" value="offline-order" />
             
@@ -375,7 +373,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             <label className="block">
               <span className="text-graphite font-medium mb-2 block">Телефон *</span>
               <input
-                type="text"
+                type="tel"
                 name="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
