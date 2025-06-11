@@ -281,7 +281,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         <form
           name="offline-order"
           method="POST"
-          action="/success.html?payment=bank"
+          action="/success.html"
           data-netlify="true"
           onSubmit={handleSubmit}
           className="space-y-4"
