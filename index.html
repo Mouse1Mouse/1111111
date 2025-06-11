@@ -12,6 +12,18 @@
     <title>MIVA - Постільна білизна з душею</title>
   </head>
   <body>
+    <!-- Hidden form for Netlify Forms detection -->
+    <form name="offline-order" netlify netlify-honeypot="bot-field" hidden>
+      <input type="text" name="fullName" />
+      <input type="tel" name="phone" />
+      <input type="text" name="contact" />
+      <input type="text" name="city" />
+      <input type="text" name="branch" />
+      <textarea name="orderSummary"></textarea>
+      <input type="text" name="totalSum" />
+      <textarea name="comments"></textarea>
+    </form>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
