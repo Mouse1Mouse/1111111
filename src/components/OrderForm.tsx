@@ -178,78 +178,22 @@ export default function OrderForm({ onBack }: OrderFormProps) {
            items.length > 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (isSubmitting || !isFormValid()) return;
-    
+  // Netlify Forms submission - стандартна відправка без JavaScript
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid()) {
+      e.preventDefault();
+      alert('Будь ласка, заповніть всі обов\'язкові поля');
+      return;
+    }
+
+    // Дозволяємо стандартну відправку форми
+    // Netlify автоматично обробить форму і перенаправить на success.html
     setIsSubmitting(true);
     
-    try {
-      // Netlify Forms submission - використовуємо стандартну відправку форми
-      const form = e.target as HTMLFormElement;
-      const formData = new FormData(form);
-      
-      // Додаємо додаткові поля, які можуть не бути в формі
-      formData.set('orderSummary', orderSummary);
-      formData.set('totalSum', totalSum.toString());
-      formData.set('city', selectedCityName);
-      formData.set('branch', selectedBranchName);
-      
-      // Відправляємо на Netlify
-      const response = await fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData as any).toString()
-      });
-
-      if (response.ok) {
-        // Форма успішно відправлена
-        setIsFormSubmitted(true);
-        
-        // Спробуємо створити рахунок Monobank для онлайн оплати (опціонально)
-        try {
-          const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          const invoiceData = {
-            amount: totalSum * 100, // Convert to kopecks
-            ccy: 980, // UAH currency code
-            merchantPaymInfo: {
-              reference: orderId,
-              destination: "Оплата замовлення MIVA",
-              comment: `Замовлення від ${fullName}, тел: ${phone}`,
-              customerEmails: [contact.includes('@') ? contact : '']
-            },
-            redirectUrl: `${window.location.origin}/success.html?payment=monopay&orderId=${orderId}`,
-            webHookUrl: `${window.location.origin}/webhook/monobank`
-          };
-
-          const monoResponse = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Token': MONOBANK_TOKEN
-            },
-            body: JSON.stringify(invoiceData)
-          });
-
-          const monoResult = await monoResponse.json();
-
-          if (monoResponse.ok && monoResult.invoiceId) {
-            setInvoiceUrl(monoResult.pageUrl);
-          }
-        } catch (monoError) {
-          console.log('Monobank invoice creation failed, but order was submitted successfully');
-        }
-      } else {
-        throw new Error('Form submission failed');
-      }
-    } catch (error) {
-      console.error('Error submitting order:', error);
-      alert('Помилка при відправці замовлення. Спробуйте ще раз або зв\'яжіться з нами напряму.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Очищаємо кошик після відправки
+    setTimeout(() => {
+      clearCart();
+    }, 1000);
   };
 
   const handleMonoPayment = async () => {
@@ -307,17 +251,6 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     window.location.href = '/success.html?payment=bank';
   };
 
-  const handleDirectPayment = () => {
-    if (invoiceUrl) {
-      // Open Monobank payment page in new window
-      window.open(invoiceUrl, '_blank');
-      
-      // Clear cart and redirect to success page
-      clearCart();
-      window.location.href = '/success.html?payment=monopay';
-    }
-  };
-
   return (
     <div className="p-6">
       <div className="flex items-center mb-6">
@@ -331,273 +264,217 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         <h2 className="text-2xl font-semibold text-brandBrown">Оформлення замовлення</h2>
       </div>
 
-      {!isFormSubmitted ? (
-        // Order Form
-        <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
-          {/* Hidden form for Netlify detection */}
-          <form name="offline-order" netlify="true" hidden>
-            <input type="text" name="fullName" />
-            <input type="text" name="phone" />
-            <input type="text" name="contact" />
-            <input type="text" name="city" />
-            <input type="text" name="branch" />
-            <textarea name="orderSummary"></textarea>
-            <input type="text" name="totalSum" />
-            <textarea name="comments"></textarea>
-          </form>
+      {/* Order Form */}
+      <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
+        {/* Hidden form for Netlify detection */}
+        <form name="offline-order" netlify="true" hidden>
+          <input type="text" name="fullName" />
+          <input type="tel" name="phone" />
+          <input type="text" name="contact" />
+          <input type="text" name="city" />
+          <input type="text" name="branch" />
+          <textarea name="orderSummary"></textarea>
+          <input type="text" name="totalSum" />
+          <textarea name="comments"></textarea>
+        </form>
 
-          <form
-            name="offline-order"
-            method="POST"
-            data-netlify="true"
-            onSubmit={handleSubmit}
-            className="space-y-4"
+        <form
+          name="offline-order"
+          method="POST"
+          action="/success.html?payment=bank"
+          data-netlify="true"
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
+          <input type="hidden" name="form-name" value="offline-order" />
+          
+          {/* ПІБ */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
+            <input
+              type="text"
+              name="fullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
+            />
+          </label>
+
+          {/* Телефон */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">Телефон *</span>
+            <input
+              type="tel"
+              name="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              disabled={isSubmitting}
+              placeholder="+380..."
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
+            />
+          </label>
+
+          {/* Email або Viber */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">Email або Viber *</span>
+            <input
+              type="text"
+              name="contact"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              required
+              disabled={isSubmitting}
+              placeholder="email@example.com або номер Viber"
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
+            />
+          </label>
+
+          {/* Місто (з пошуком) */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">Місто *</span>
+            <input
+              type="text"
+              list="city-list"
+              name="city"
+              value={selectedCityName || cityQuery}
+              onChange={(e) => {
+                setCityQuery(e.target.value);
+                onCitySelect(e.target.value);
+              }}
+              required
+              disabled={!NOVA_POSHTA_KEY || isSubmitting}
+              placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто..." : "API ключ не налаштований"}
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
+            />
+            <datalist id="city-list">
+              {filteredCities.map((c) => (
+                <option key={c.Ref} value={c.Description} />
+              ))}
+            </datalist>
+          </label>
+
+          {/* Відділення Нової Пошти */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">
+              Відділення Нової Пошти *
+            </span>
+            <input
+              type="text"
+              list="branch-list"
+              name="branch"
+              value={selectedBranchName}
+              onChange={(e) => {
+                setSelectedBranchName(e.target.value);
+                onBranchSelect(e.target.value);
+              }}
+              required
+              disabled={!selectedCityRef || isSubmitting}
+              placeholder={
+                selectedCityRef
+                  ? "Оберіть відділення..."
+                  : "Спочатку оберіть місто"
+              }
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
+            />
+            <datalist id="branch-list">
+              {branches.map((b) => (
+                <option key={b.Ref} value={b.Description} />
+              ))}
+            </datalist>
+          </label>
+
+          {/* Замовлення (приховане поле) */}
+          <input type="hidden" name="orderSummary" value={orderSummary} />
+
+          {/* Замовлення (текстове поле, тільки для читання) */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">Замовлення</span>
+            <textarea
+              readOnly
+              rows={6}
+              className="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 text-graphite resize-none"
+              value={orderSummary}
+            />
+          </label>
+
+          {/* Загальна сума */}
+          <div className="flex justify-between items-center bg-gray-50 p-4 rounded">
+            <span className="text-lg font-medium text-graphite">Загальна сума:</span>
+            <span className="text-lg font-semibold text-brandBrown">{totalSum} грн</span>
+          </div>
+          <input type="hidden" name="totalSum" value={totalSum} />
+
+          {/* Коментар */}
+          <label className="block">
+            <span className="text-graphite font-medium mb-2 block">
+              Ваш коментар/побажання
+            </span>
+            <textarea
+              name="comments"
+              rows={3}
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              disabled={isSubmitting}
+              placeholder="Додаткові побажання щодо замовлення..."
+              className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors resize-none disabled:bg-gray-100"
+            />
+          </label>
+
+          {/* Кнопка відправити замовлення */}
+          <button
+            type="submit"
+            disabled={!isFormValid() || isSubmitting}
+            className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
-            <input type="hidden" name="form-name" value="offline-order" />
+            {isSubmitting ? 'Відправляємо замовлення...' : 'Відправити замовлення'}
+          </button>
+
+          {/* Альтернативні способи оплати */}
+          <div className="border-t border-gray-200 pt-4">
+            <p className="text-center text-sm text-gray-600 mb-4">
+              Або оберіть спосіб онлайн-оплати:
+            </p>
             
-            {/* ПІБ */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
-              <input
-                type="text"
-                name="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                disabled={isSubmitting}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
-              />
-            </label>
-
-            {/* Телефон */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">Телефон *</span>
-              <input
-                type="tel"
-                name="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                disabled={isSubmitting}
-                placeholder="+380..."
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
-              />
-            </label>
-
-            {/* Email або Viber */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">Email або Viber *</span>
-              <input
-                type="text"
-                name="contact"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                required
-                disabled={isSubmitting}
-                placeholder="email@example.com або номер Viber"
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
-              />
-            </label>
-
-            {/* Місто (з пошуком) */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">Місто *</span>
-              <input
-                type="text"
-                list="city-list"
-                name="city"
-                value={cityQuery}
-                onChange={(e) => onCitySelect(e.target.value)}
-                required
-                disabled={!NOVA_POSHTA_KEY || isSubmitting}
-                placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто..." : "API ключ не налаштований"}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
-              />
-              <datalist id="city-list">
-                {filteredCities.map((c) => (
-                  <option key={c.Ref} value={c.Description} />
-                ))}
-              </datalist>
-            </label>
-
-            {/* Відділення Нової Пошти */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">
-                Відділення Нової Пошти *
-              </span>
-              <input
-                type="text"
-                list="branch-list"
-                name="branch"
-                value={selectedBranchName}
-                onChange={(e) => onBranchSelect(e.target.value)}
-                required
-                disabled={!selectedCityRef || isSubmitting}
-                placeholder={
-                  selectedCityRef
-                    ? "Оберіть відділення..."
-                    : "Спочатку оберіть місто"
-                }
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
-              />
-              <datalist id="branch-list">
-                {branches.map((b) => (
-                  <option key={b.Ref} value={b.Description} />
-                ))}
-              </datalist>
-            </label>
-
-            {/* Замовлення (текстове поле, тільки для читання) */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">Замовлення</span>
-              <textarea
-                name="orderSummary"
-                readOnly
-                rows={6}
-                className="w-full border border-gray-300 rounded-lg p-3 bg-gray-50 text-graphite resize-none"
-                value={orderSummary}
-              />
-            </label>
-
-            {/* Загальна сума */}
-            <div className="flex justify-between items-center bg-gray-50 p-4 rounded">
-              <span className="text-lg font-medium text-graphite">Загальна сума:</span>
-              <span className="text-lg font-semibold text-brandBrown">{totalSum} грн</span>
-            </div>
-            <input type="hidden" name="totalSum" value={totalSum} />
-
-            {/* Коментар */}
-            <label className="block">
-              <span className="text-graphite font-medium mb-2 block">
-                Ваш коментар/побажання
-              </span>
-              <textarea
-                name="comments"
-                rows={3}
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                disabled={isSubmitting}
-                placeholder="Додаткові побажання щодо замовлення..."
-                className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors resize-none disabled:bg-gray-100"
-              />
-            </label>
-
-            {/* Кнопка відправити замовлення */}
-            <button
-              type="submit"
-              disabled={!isFormValid() || isSubmitting}
-              className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-            >
-              {isSubmitting ? 'Відправляємо замовлення...' : 'Відправити замовлення'}
-            </button>
-          </form>
-
-          {!NOVA_POSHTA_KEY && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm">
-                <strong>Увага:</strong> Для роботи з Nova Poshta API потрібно додати ключ у файл .env:
-                <br />
-                <code className="bg-yellow-100 px-2 py-1 rounded">VITE_NOVA_POSHTA_API_KEY=ваш_ключ</code>
-              </p>
-            </div>
-          )}
-        </div>
-      ) : (
-        // Payment Options (shown after form submission)
-        <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h3 className="text-2xl font-semibold text-brandBrown mb-2">Замовлення відправлено!</h3>
-            <p className="text-graphite mb-4">Ваше замовлення успішно надіслано на обробку. Ми зв'яжемося з вами найближчим часом.</p>
-            <p className="text-sm text-gray-600 mb-6">Тепер ви можете обрати спосіб оплати:</p>
-          </div>
-
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-graphite">Сума до оплати:</span>
-              <span className="text-xl font-bold text-brandBrown">{totalSum} грн</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Direct Monobank Payment Option */}
-            {invoiceUrl && (
+            <div className="space-y-3">
+              {/* MonoPay SDK Option */}
               <button
-                onClick={handleDirectPayment}
-                disabled={isPaymentProcessing}
-                className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                onClick={handleMonoPayment}
+                disabled={isPaymentProcessing || !isFormValid()}
+                className="w-full flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-4">
-                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="text-white w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                     </svg>
                   </div>
                   <div className="text-left">
-                    <h3 className="font-semibold text-graphite">
-                      Оплатити онлайн через Monobank
+                    <h3 className="font-semibold text-graphite text-sm">
+                      {isPaymentProcessing ? 'Обробка...' : 'Оплатити картою онлайн'}
                     </h3>
-                    <p className="text-sm text-gray-600">Картою онлайн (безпечно)</p>
+                    <p className="text-xs text-gray-600">MonoPay (безпечно)</p>
                   </div>
                 </div>
-                <div className="text-green-600 font-medium">Швидко</div>
+                <div className="text-blue-600 font-medium text-sm">Швидко</div>
               </button>
-            )}
-
-            {/* MonoPay SDK Option (fallback) */}
-            <button
-              onClick={handleMonoPayment}
-              disabled={isPaymentProcessing}
-              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
-                  <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-graphite">
-                    {isPaymentProcessing ? 'Обробка...' : 'MonoPay (модальне вікно)'}
-                  </h3>
-                  <p className="text-sm text-gray-600">Альтернативний спосіб</p>
-                </div>
-              </div>
-              <div className="text-blue-600 font-medium">SDK</div>
-            </button>
-
-            {/* Bank Transfer Option */}
-            <button
-              onClick={handleBankTransfer}
-              disabled={isPaymentProcessing}
-              className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 disabled:opacity-50"
-            >
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-brandBrown to-gold rounded-lg flex items-center justify-center mr-4">
-                  <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-graphite">Банківський переказ</h3>
-                  <p className="text-sm text-gray-600">На рахунок</p>
-                </div>
-              </div>
-              <div className="text-blue-600 font-medium">Надійно</div>
-            </button>
+            </div>
           </div>
+        </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Оберіть зручний для вас спосіб оплати
+        {!NOVA_POSHTA_KEY && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 text-sm">
+              <strong>Увага:</strong> Для роботи з Nova Poshta API потрібно додати ключ у файл .env:
+              <br />
+              <code className="bg-yellow-100 px-2 py-1 rounded">VITE_NOVA_POSHTA_API_KEY=ваш_ключ</code>
             </p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
