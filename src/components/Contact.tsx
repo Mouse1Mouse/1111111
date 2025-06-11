@@ -25,10 +25,10 @@ export default function Contact() {
           <div className="mb-8">
             <p className="text-graphite mb-2 font-medium">Напишіть нам:</p>
             <a 
-              href="mailto:contact@miva.ua" 
+              href="mailto:mivatextil@gmail.com" 
               className="text-brandBrown hover:text-gold transition-colors duration-200 text-lg"
             >
-              contact@miva.ua
+              mivatextil@gmail.com
             </a>
           </div>
           
