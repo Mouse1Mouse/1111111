@@ -242,14 +242,45 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     setIsPaymentProcessing(true);
     
     try {
-      // Check if MonoPay SDK is loaded
-      if (!window.MonoPay) {
-        throw new Error('MonoPay SDK не завантажено');
-      }
-
       // Generate unique order ID
       const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
+      // Check if MonoPay SDK is loaded
+      if (typeof window.MonoPay === 'undefined') {
+        console.log('MonoPay SDK not found, loading...');
+        
+        // Try to load MonoPay SDK dynamically
+        const script = document.createElement('script');
+        script.src = 'https://pay.monobank.ua/sdk/monopay.js';
+        script.onload = () => {
+          console.log('MonoPay SDK loaded successfully');
+          initializeMonoPay(orderId);
+        };
+        script.onerror = () => {
+          console.error('Failed to load MonoPay SDK');
+          alert('Помилка завантаження платіжної системи. Спробуйте пізніше або оберіть оплату на рахунок.');
+          setIsPaymentProcessing(false);
+        };
+        document.head.appendChild(script);
+      } else {
+        initializeMonoPay(orderId);
+      }
+      
+    } catch (error) {
+      console.error('MonoPay initialization error:', error);
+      alert('Помилка ініціалізації платіжної системи. Спробуйте пізніше або оберіть оплату на рахунок.');
+      setIsPaymentProcessing(false);
+    }
+  };
+
+  const initializeMonoPay = (orderId: string) => {
+    try {
+      console.log('Initializing MonoPay with:', {
+        token: MONOBANK_TOKEN,
+        amount: totalSum * 100,
+        orderId: orderId
+      });
+
       // Create MonoPay instance
       const monoPay = window.MonoPay.create({
         token: MONOBANK_TOKEN,
@@ -297,11 +328,12 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       });
 
       // Open payment modal
+      console.log('Opening MonoPay modal...');
       monoPay.open();
       
     } catch (error) {
-      console.error('MonoPay initialization error:', error);
-      alert('Помилка ініціалізації платіжної системи. Спробуйте пізніше або оберіть оплату на рахунок.');
+      console.error('Error creating MonoPay instance:', error);
+      alert('Помилка створення платіжної форми. Спробуйте пізніше або оберіть оплату на рахунок.');
       setIsPaymentProcessing(false);
     }
   };
@@ -374,12 +406,12 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
                     <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
                     </svg>
                   </div>
                   <div>
                     <h3 className="font-semibold text-graphite">
-                      {isPaymentProcessing ? 'Обробка платежу...' : 'Оплата картою онлайн'}
+                      {isPaymentProcessing ? 'Завантаження платіжної форми...' : 'Оплата картою онлайн'}
                     </h3>
                     <p className="text-sm text-gray-600">MonoPay (миттєво)</p>
                   </div>
