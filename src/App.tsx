@@ -4,7 +4,6 @@ import Hero from "./components/Hero";
 import About from "./components/About";
 import Gallery from "./components/Gallery";
 import FeaturesSection from "./components/FeaturesSection";
-import ColorConstructor from "./components/ColorConstructor";
 import AdditionalProducts from "./components/AdditionalProducts";
 import Contact from "./components/Contact";
 import Footer from "./components/Footer";
@@ -18,7 +17,6 @@ export default function App() {
       <About />
       <Gallery />
       <FeaturesSection />
-      <ColorConstructor />
       <AdditionalProducts />
       <Contact />
       <Footer />
