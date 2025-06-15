@@ -181,6 +181,18 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     setIsSubmitting(true);
     
     try {
+      // Save data to localStorage for success page
+      localStorage.setItem('totalSum', totalSum.toString());
+      localStorage.setItem('orderData', JSON.stringify({
+        fullName,
+        phone,
+        contact,
+        city: cityQuery,
+        branch: selectedBranchName,
+        orderSummary,
+        totalSum
+      }));
+
       // Prepare form data for Netlify
       const formData = {
         "form-name": "offline-order",
@@ -213,6 +225,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       console.error('Error submitting form:', error);
       alert('Помилка при відправці замовлення. Спробуйте ще раз.');
     } finally {
+      // ВАЖЛИВО: завжди розблокувати форму
       setIsSubmitting(false);
     }
   };

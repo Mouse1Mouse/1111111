@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MonoPay SDK - ОБОВ'ЯЗКОВО! -->
+    <script src="https://widget.monobank.ua/widget.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -56,7 +58,7 @@
         <!-- MonoPay Option -->
         <div class="mb-4">
           <button 
-            onclick="payWithMonoPay()" 
+            onclick="payMono()" 
             class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
             <div class="flex items-center justify-center">
@@ -146,11 +148,13 @@
     </div>
 
     <script>
-      // Get URL parameters
+      // Get URL parameters and localStorage data
       const urlParams = new URLSearchParams(window.location.search);
       const paymentMethod = urlParams.get('payment');
       const orderId = urlParams.get('orderId');
-      const totalSum = urlParams.get('total') || '0';
+      const totalSum = urlParams.get('total') || localStorage.getItem('totalSum') || '0';
+
+      console.log('Page loaded with params:', { paymentMethod, orderId, totalSum });
 
       // Check if this is a return from successful payment
       if (paymentMethod === 'monopay') {
@@ -182,19 +186,26 @@
         document.getElementById('payment-options').classList.remove('hidden');
       }
 
-      // MonoPay payment function with error handling
-      function payWithMonoPay() {
-        try {
-          // Check if MonoPay SDK is available
-          if (typeof window.MonoPay === 'undefined') {
-            console.error('MonoPay SDK not loaded');
-            alert('Платіжна система тимчасово недоступна. Будь ласка, оберіть банківський переказ або спробуйте пізніше.');
-            return;
-          }
+      // MonoPay payment function
+      function payMono() {
+        console.log('payMono called with totalSum:', totalSum);
+        
+        // Check if MonoPay SDK is available
+        if (!window.MonoPay) {
+          console.error('MonoPay SDK not loaded');
+          alert('MonoPay SDK не завантажений! Будь ласка, оберіть банківський переказ.');
+          return;
+        }
 
-          // Generate unique order ID
-          const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
+        // Generate unique order ID
+        const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log('Creating MonoPay with:', {
+          amount: parseInt(totalSum) * 100,
+          orderId: newOrderId
+        });
+
+        try {
           // Create MonoPay instance
           const monoPay = window.MonoPay.create({
             token: 'mpbXCUIRaGB_E54bLbeSRCw',
@@ -218,8 +229,8 @@
           monoPay.open();
           
         } catch (error) {
-          console.error('MonoPay initialization error:', error);
-          alert('Помилка ініціалізації платіжної системи. Будь ласка, оберіть банківський переказ або спробуйте пізніше.');
+          console.error('MonoPay create error:', error);
+          alert('Помилка ініціалізації платіжної системи. Будь ласка, оберіть банківський переказ.');
         }
       }
 
@@ -232,38 +243,6 @@
         document.getElementById('payment-step').style.display = 'flex';
         document.getElementById('screenshot-step').style.display = 'flex';
       }
-
-      // Load MonoPay SDK dynamically with error handling
-      function loadMonoPaySDK() {
-        return new Promise((resolve, reject) => {
-          // Check if already loaded
-          if (window.MonoPay) {
-            resolve();
-            return;
-          }
-
-          const script = document.createElement('script');
-          script.src = 'https://pay.monobank.ua/sdk/monopay.js';
-          script.onload = () => {
-            console.log('MonoPay SDK loaded successfully');
-            resolve();
-          };
-          script.onerror = () => {
-            console.error('Failed to load MonoPay SDK');
-            reject(new Error('Failed to load MonoPay SDK'));
-          };
-          
-          document.head.appendChild(script);
-        });
-      }
-
-      // Initialize MonoPay SDK when page loads
-      document.addEventListener('DOMContentLoaded', function() {
-        loadMonoPaySDK().catch(error => {
-          console.warn('MonoPay SDK failed to load:', error);
-          // SDK loading failed, but page should still work with bank transfer option
-        });
-      });
     </script>
   </body>
 </html>
