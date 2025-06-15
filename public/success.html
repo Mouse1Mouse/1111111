@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- MonoPay SDK - ОБОВ'ЯЗКОВО! -->
-    <script src="https://widget.monobank.ua/widget.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -244,5 +242,8 @@
         document.getElementById('screenshot-step').style.display = 'flex';
       }
     </script>
+
+    <!-- MonoPay SDK - КРИТИЧНО ВАЖЛИВО! -->
+    <script src="https://widget.monobank.ua/widget.js"></script>
   </body>
 </html>
