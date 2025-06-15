@@ -6,30 +6,6 @@ interface OrderFormProps {
   onBack: () => void;
 }
 
-// Helper function to encode form data for Netlify
-function encode(data: Record<string, string>) {
-  return Object.keys(data)
-    .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(data[key]))
-    .join("&");
-}
-
-declare global {
-  interface Window {
-    MonoPay: {
-      create: (config: {
-        token: string;
-        amount: number;
-        orderId: string;
-        onSuccess: (response: any) => void;
-        onError: (error: any) => void;
-        onCancel: () => void;
-      }) => {
-        open: () => void;
-      };
-    };
-  }
-}
-
 export default function OrderForm({ onBack }: OrderFormProps) {
   const { items, clearCart } = useCart();
   const [orderSummary, setOrderSummary] = useState("");
@@ -38,13 +14,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [contact, setContact] = useState("");
   const [comments, setComments] = useState("");
 
-  // Payment method selection
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'bank' | 'monopay' | null>(null);
-  const [showPaymentSelection, setShowPaymentSelection] = useState(false);
-
   // Form submission states
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
   // Nova Poshta integration
   const [cityQuery, setCityQuery] = useState("");
@@ -58,7 +29,6 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [selectedBranchName, setSelectedBranchName] = useState("");
 
   const NOVA_POSHTA_KEY = import.meta.env.VITE_NOVA_POSHTA_API_KEY;
-  const MONOBANK_TOKEN = 'mpbXCUIRaGB_E54bLbeSRCw';
 
   // Build order summary text
   useEffect(() => {
@@ -187,7 +157,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
            items.length > 0;
   };
 
-  // Handle initial form submission (show payment selection)
+  // Handle form submission
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -196,238 +166,13 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       return;
     }
 
-    setShowPaymentSelection(true);
-  };
-
-  // Handle bank transfer payment
-  const handleBankPayment = async () => {
     setIsSubmitting(true);
     
-    try {
-      // Prepare form data for Netlify
-      const formData = {
-        "form-name": "offline-order",
-        fullName,
-        phone,
-        contact,
-        city: selectedCityName,
-        branch: selectedBranchName,
-        orderSummary,
-        totalSum: totalSum.toString(),
-        comments: comments + "\n\nСпосіб оплати: Банківський переказ"
-      };
-
-      // Submit to Netlify using fetch
-      await fetch("/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: encode(formData)
-      });
-
-      // Clear cart and redirect to success page
-      clearCart();
-      window.location.href = '/success.html?payment=bank';
-      
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Помилка при відправці замовлення. Спробуйте ще раз.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleMonoPayment = async () => {
-    if (isPaymentProcessing) return;
+    // Clear cart immediately since form will redirect
+    clearCart();
     
-    setIsPaymentProcessing(true);
-    
-    try {
-      // Generate unique order ID
-      const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Check if MonoPay SDK is loaded
-      if (typeof window.MonoPay === 'undefined') {
-        console.log('MonoPay SDK not found, loading...');
-        
-        // Try to load MonoPay SDK dynamically
-        const script = document.createElement('script');
-        script.src = 'https://pay.monobank.ua/sdk/monopay.js';
-        script.onload = () => {
-          console.log('MonoPay SDK loaded successfully');
-          initializeMonoPay(orderId);
-        };
-        script.onerror = () => {
-          console.error('Failed to load MonoPay SDK');
-          alert('Помилка завантаження платіжної системи. Спробуйте пізніше або оберіть оплату на рахунок.');
-          setIsPaymentProcessing(false);
-        };
-        document.head.appendChild(script);
-      } else {
-        initializeMonoPay(orderId);
-      }
-      
-    } catch (error) {
-      console.error('MonoPay initialization error:', error);
-      alert('Помилка ініціалізації платіжної системи. Спробуйте пізніше або оберіть оплату на рахунок.');
-      setIsPaymentProcessing(false);
-    }
+    // Form will be submitted by Netlify and redirect to success page
   };
-
-  const initializeMonoPay = (orderId: string) => {
-    try {
-      console.log('Initializing MonoPay with:', {
-        token: MONOBANK_TOKEN,
-        amount: totalSum * 100,
-        orderId: orderId
-      });
-
-      // Create MonoPay instance
-      const monoPay = window.MonoPay.create({
-        token: MONOBANK_TOKEN,
-        amount: totalSum * 100, // MonoPay expects amount in kopecks
-        orderId: orderId,
-        onSuccess: async (response) => {
-          console.log('Payment successful:', response);
-          
-          try {
-            // Submit form data to Netlify after successful payment
-            const formData = {
-              "form-name": "offline-order",
-              fullName,
-              phone,
-              contact,
-              city: selectedCityName,
-              branch: selectedBranchName,
-              orderSummary,
-              totalSum: totalSum.toString(),
-              comments: comments + `\n\nСпосіб оплати: MonoPay (ОПЛАЧЕНО). ID замовлення: ${orderId}`
-            };
-
-            await fetch("/", {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: encode(formData)
-            });
-          } catch (error) {
-            console.error('Error submitting form after payment:', error);
-          }
-          
-          // Clear cart and redirect to success page
-          clearCart();
-          window.location.href = '/success.html?payment=monopay&orderId=' + orderId;
-        },
-        onError: (error) => {
-          console.error('Payment error:', error);
-          alert('Помилка при оплаті. Спробуйте ще раз або оберіть оплату на рахунок.');
-          setIsPaymentProcessing(false);
-        },
-        onCancel: () => {
-          console.log('Payment cancelled');
-          setIsPaymentProcessing(false);
-        }
-      });
-
-      // Open payment modal
-      console.log('Opening MonoPay modal...');
-      monoPay.open();
-      
-    } catch (error) {
-      console.error('Error creating MonoPay instance:', error);
-      alert('Помилка створення платіжної форми. Спробуйте пізніше або оберіть оплату на рахунок.');
-      setIsPaymentProcessing(false);
-    }
-  };
-
-  // If showing payment selection
-  if (showPaymentSelection) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center mb-6">
-          <button
-            onClick={() => setShowPaymentSelection(false)}
-            className="text-graphite hover:text-brandBrown transition-colors mr-4"
-            disabled={isSubmitting || isPaymentProcessing}
-          >
-            ← Назад до форми
-          </button>
-          <h2 className="text-2xl font-semibold text-brandBrown">Оберіть спосіб оплати</h2>
-        </div>
-
-        <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6">
-          {/* Order Summary */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-brandBrown mb-2">Ваше замовлення:</h3>
-            <div className="text-sm text-graphite mb-2">
-              <strong>{fullName}</strong><br />
-              {phone}<br />
-              {selectedCityName}, {selectedBranchName}
-            </div>
-            <div className="text-sm text-graphite mb-3 whitespace-pre-line">
-              {orderSummary}
-            </div>
-            <div className="text-lg font-bold text-brandBrown">
-              Загальна сума: {totalSum} грн
-            </div>
-          </div>
-
-          {/* Payment Options */}
-          <div className="space-y-4">
-            {/* Bank Transfer */}
-            <button
-              onClick={handleBankPayment}
-              disabled={isSubmitting || isPaymentProcessing}
-              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-brandBrown to-gold rounded-lg flex items-center justify-center mr-4">
-                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-graphite">
-                      {isSubmitting ? 'Обробка замовлення...' : 'Банківський переказ'}
-                    </h3>
-                    <p className="text-sm text-gray-600">Оплата на рахунок ФОП</p>
-                  </div>
-                </div>
-                <div className="text-brandBrown font-medium">Безкоштовно</div>
-              </div>
-            </button>
-
-            {/* MonoPay */}
-            <button
-              onClick={handleMonoPayment}
-              disabled={isPaymentProcessing || isSubmitting}
-              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
-                    <svg className="text-white w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-graphite">
-                      {isPaymentProcessing ? 'Завантаження платіжної форми...' : 'Оплата картою онлайн'}
-                    </h3>
-                    <p className="text-sm text-gray-600">MonoPay (миттєво)</p>
-                  </div>
-                </div>
-                <div className="text-blue-600 font-medium">Швидко</div>
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            Після вибору способу оплати ваше замовлення буде оброблено
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -435,7 +180,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
         <button
           onClick={onBack}
           className="text-graphite hover:text-brandBrown transition-colors mr-4"
-          disabled={isSubmitting || isPaymentProcessing}
+          disabled={isSubmitting}
         >
           ← Назад до кошика
         </button>
@@ -445,9 +190,19 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       {/* Order Form */}
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
         <form
+          name="offline-order"
+          method="POST"
+          data-netlify="true"
+          action="/success.html"
           onSubmit={handleFormSubmit}
           className="space-y-4"
         >
+          {/* Hidden form name for Netlify */}
+          <input type="hidden" name="form-name" value="offline-order" />
+          
+          {/* Hidden honeypot field for spam protection */}
+          <input type="hidden" name="bot-field" />
+
           {/* ПІБ */}
           <label className="block">
             <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
@@ -457,7 +212,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              disabled={isSubmitting || isPaymentProcessing}
+              disabled={isSubmitting}
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
             />
           </label>
@@ -471,7 +226,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              disabled={isSubmitting || isPaymentProcessing}
+              disabled={isSubmitting}
               placeholder="+380..."
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
             />
@@ -486,7 +241,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               value={contact}
               onChange={(e) => setContact(e.target.value)}
               required
-              disabled={isSubmitting || isPaymentProcessing}
+              disabled={isSubmitting}
               placeholder="email@example.com або номер Viber"
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
             />
@@ -505,7 +260,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 onCitySelect(e.target.value);
               }}
               required
-              disabled={!NOVA_POSHTA_KEY || isSubmitting || isPaymentProcessing}
+              disabled={!NOVA_POSHTA_KEY || isSubmitting}
               placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто..." : "API ключ не налаштований"}
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
             />
@@ -531,7 +286,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 onBranchSelect(e.target.value);
               }}
               required
-              disabled={!selectedCityRef || isSubmitting || isPaymentProcessing}
+              disabled={!selectedCityRef || isSubmitting}
               placeholder={
                 selectedCityRef
                   ? "Оберіть відділення..."
@@ -546,7 +301,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             </datalist>
           </label>
 
-          {/* Замовлення (текстове поле, тільки для читання) */}
+          {/* Замовлення (hidden field for Netlify) */}
+          <input type="hidden" name="orderSummary" value={orderSummary} />
+          
+          {/* Замовлення (display only) */}
           <label className="block">
             <span className="text-graphite font-medium mb-2 block">Замовлення</span>
             <textarea
@@ -557,7 +315,10 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             />
           </label>
 
-          {/* Загальна сума */}
+          {/* Загальна сума (hidden field for Netlify) */}
+          <input type="hidden" name="totalSum" value={totalSum.toString()} />
+          
+          {/* Загальна сума (display) */}
           <div className="flex justify-between items-center bg-gray-50 p-4 rounded">
             <span className="text-lg font-medium text-graphite">Загальна сума:</span>
             <span className="text-lg font-semibold text-brandBrown">{totalSum} грн</span>
@@ -573,19 +334,19 @@ export default function OrderForm({ onBack }: OrderFormProps) {
               rows={3}
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              disabled={isSubmitting || isPaymentProcessing}
+              disabled={isSubmitting}
               placeholder="Додаткові побажання щодо замовлення..."
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors resize-none disabled:bg-gray-100"
             />
           </label>
 
-          {/* Кнопка продовжити до оплати */}
+          {/* Кнопка відправки */}
           <button
             type="submit"
-            disabled={!isFormValid() || isSubmitting || isPaymentProcessing}
+            disabled={!isFormValid() || isSubmitting}
             className="w-full bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold px-6 py-3 rounded-lg font-semibold text-cream transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
           >
-            Продовжити до оплати
+            {isSubmitting ? 'Відправка замовлення...' : 'Оформити замовлення'}
           </button>
         </form>
 
