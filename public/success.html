@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://pay.monobank.ua/sdk/monopay.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -33,7 +32,7 @@
     <div class="max-w-2xl mx-auto text-center bg-white bg-opacity-90 rounded-2xl shadow-2xl p-12">
       <div class="mb-8">
         <h1 class="text-4xl font-bold text-brandBrown mb-4">Дякуємо за замовлення!</h1>
-        <p class="text-xl text-graphite mb-6">Ваше замовлення успішно прийнято і передано в обробку.</p>
+        <p class="text-xl text-graphite mb-6" id="success-message">Ваше замовлення успішно прийнято і передано в обробку.</p>
       </div>
 
       <!-- Payment Success Section (shown for MonoPay) -->
@@ -50,61 +49,44 @@
         <p class="text-sm text-green-600" id="order-id"></p>
       </div>
 
-      <!-- Payment Options Section -->
+      <!-- Payment Options Section (shown for new orders) -->
       <div id="payment-options" class="mb-8">
         <h2 class="text-2xl font-semibold text-brandBrown mb-6">Оберіть спосіб оплати:</h2>
         
-        <div class="space-y-4">
-          <!-- MonoPay Button -->
-          <button
-            onclick="payWithMonoPay()"
-            id="monopay-btn"
-            class="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left group"
+        <!-- MonoPay Option -->
+        <div class="mb-4">
+          <button 
+            onclick="payWithMonoPay()" 
+            class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-6">
-                  <svg class="text-white w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-xl font-semibold text-graphite group-hover:text-brandBrown transition-colors">
-                    Оплата картою онлайн
-                  </h3>
-                  <p class="text-gray-600">MonoPay - швидко та безпечно</p>
-                </div>
-              </div>
-              <div class="text-blue-600 font-bold text-lg">Миттєво</div>
+            <div class="flex items-center justify-center">
+              <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+              </svg>
+              <span class="text-lg font-semibold">Оплатити картою онлайн (MonoPay)</span>
             </div>
+            <p class="text-sm mt-2 opacity-90">Миттєва оплата, безпечно</p>
           </button>
+        </div>
 
-          <!-- Bank Transfer Button -->
-          <button
-            onclick="showBankDetails()"
-            class="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-brandBrown hover:bg-cream/30 transition-all duration-200 text-left group"
+        <!-- Bank Transfer Option -->
+        <div class="mb-4">
+          <button 
+            onclick="showBankTransfer()" 
+            class="w-full p-4 bg-gradient-to-r from-brandBrown to-brandBrown hover:to-gold text-cream rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-brandBrown to-gold rounded-lg flex items-center justify-center mr-6">
-                  <svg class="text-white w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-xl font-semibold text-graphite group-hover:text-brandBrown transition-colors">
-                    Банківський переказ
-                  </h3>
-                  <p class="text-gray-600">Оплата на рахунок ФОП</p>
-                </div>
-              </div>
-              <div class="text-brandBrown font-bold text-lg">Безкоштовно</div>
+            <div class="flex items-center justify-center">
+              <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+              </svg>
+              <span class="text-lg font-semibold">Банківський переказ</span>
             </div>
+            <p class="text-sm mt-2 opacity-90">Оплата на рахунок ФОП</p>
           </button>
         </div>
       </div>
 
-      <!-- Bank Transfer Details (hidden by default) -->
+      <!-- Bank Transfer Section (hidden by default) -->
       <div id="bank-transfer" class="bg-gradient-to-br from-gold/10 to-brandBrown/10 rounded-xl p-8 mb-8 hidden">
         <h2 class="text-2xl font-semibold text-brandBrown mb-6">Реквізити для оплати:</h2>
         
@@ -122,15 +104,6 @@
             <span class="font-bold text-brandBrown">Оплата за товар</span>
           </div>
         </div>
-
-        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 class="font-semibold text-brandBrown mb-2">Що далі?</h4>
-          <ol class="text-sm text-graphite space-y-1">
-            <li>1. Здійсніть переказ за вказаними реквізитами</li>
-            <li>2. Надішліть скріншот переказу у Viber або Telegram</li>
-            <li>3. Ваше замовлення буде виготовлено та відправлено протягом 1-2 робочих днів</li>
-          </ol>
-        </div>
       </div>
 
       <div class="bg-blue-50 rounded-lg p-6 mb-8">
@@ -142,10 +115,14 @@
           </li>
           <li class="flex items-start" id="payment-step">
             <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">2</span>
-            <span>Оберіть зручний спосіб оплати вище</span>
+            <span>Після підтвердження здійсніть оплату за вказаними реквізитами</span>
+          </li>
+          <li class="flex items-start" id="screenshot-step">
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">3</span>
+            <span>Надішліть скріншот переказу у Viber або Telegram</span>
           </li>
           <li class="flex items-start">
-            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">3</span>
+            <span class="bg-brandBrown text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">4</span>
             <span>Ваше замовлення буде виготовлено та відправлено протягом 1-2 робочих днів</span>
           </li>
         </ol>
@@ -169,149 +146,124 @@
     </div>
 
     <script>
-      // MonoPay configuration
-      const MONOBANK_TOKEN = 'mpbXCUIRaGB_E54bLbeSRCw';
-      
-      // Get order data from URL parameters (if any)
+      // Get URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const paymentMethod = urlParams.get('payment');
       const orderId = urlParams.get('orderId');
+      const totalSum = urlParams.get('total') || '0';
 
-      // Check if this is a return from successful MonoPay payment
+      // Check if this is a return from successful payment
       if (paymentMethod === 'monopay') {
-        document.getElementById('payment-options').classList.add('hidden');
+        // Show MonoPay success message
         document.getElementById('payment-success').classList.remove('hidden');
+        document.getElementById('payment-options').classList.add('hidden');
+        document.getElementById('bank-transfer').classList.add('hidden');
         
         if (orderId) {
           document.getElementById('order-id').textContent = `Номер замовлення: ${orderId}`;
         }
 
         // Update next steps for paid orders
-        document.getElementById('payment-step').innerHTML = `
-          <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">✓</span>
-          <span>Оплата успішно завершена</span>
-        `;
-      }
-
-      function showBankDetails() {
+        document.getElementById('payment-step').style.display = 'none';
+        document.getElementById('screenshot-step').style.display = 'none';
+        
+        // Update step numbers
+        const steps = document.querySelectorAll('#next-steps li span:first-child');
+        if (steps[2]) steps[2].textContent = '2'; // Manufacturing step becomes step 2
+      } else if (paymentMethod === 'bank') {
+        // Show bank transfer instructions
+        document.getElementById('payment-success').classList.add('hidden');
         document.getElementById('payment-options').classList.add('hidden');
         document.getElementById('bank-transfer').classList.remove('hidden');
+      } else {
+        // Show payment options for new orders
+        document.getElementById('payment-success').classList.add('hidden');
+        document.getElementById('bank-transfer').classList.add('hidden');
+        document.getElementById('payment-options').classList.remove('hidden');
       }
 
+      // MonoPay payment function with error handling
       function payWithMonoPay() {
-        const btn = document.getElementById('monopay-btn');
-        btn.disabled = true;
-        btn.innerHTML = `
-          <div class="flex items-center justify-center">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-brandBrown mr-3"></div>
-            Завантаження платіжної форми...
-          </div>
-        `;
-
         try {
-          // Generate unique order ID
-          const orderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          // Get total sum from URL parameters or use default
-          const totalSum = urlParams.get('total') || 1000; // Default amount if not provided
-          
-          console.log('Initializing MonoPay with:', {
-            token: MONOBANK_TOKEN,
-            amount: totalSum * 100, // Convert to kopecks
-            orderId: orderId
-          });
+          // Check if MonoPay SDK is available
+          if (typeof window.MonoPay === 'undefined') {
+            console.error('MonoPay SDK not loaded');
+            alert('Платіжна система тимчасово недоступна. Будь ласка, оберіть банківський переказ або спробуйте пізніше.');
+            return;
+          }
 
+          // Generate unique order ID
+          const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
           // Create MonoPay instance
           const monoPay = window.MonoPay.create({
-            token: MONOBANK_TOKEN,
-            amount: parseInt(totalSum) * 100, // MonoPay expects amount in kopecks
-            orderId: orderId,
+            token: 'mpbXCUIRaGB_E54bLbeSRCw',
+            amount: parseInt(totalSum) * 100, // Amount in kopecks
+            orderId: newOrderId,
             onSuccess: function(response) {
               console.log('Payment successful:', response);
               // Redirect to success page with payment confirmation
-              window.location.href = '/success.html?payment=monopay&orderId=' + orderId;
+              window.location.href = '/success.html?payment=monopay&orderId=' + newOrderId;
             },
             onError: function(error) {
               console.error('Payment error:', error);
               alert('Помилка при оплаті. Спробуйте ще раз або оберіть банківський переказ.');
-              
-              // Reset button
-              btn.disabled = false;
-              btn.innerHTML = `
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-6">
-                      <svg class="text-white w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 class="text-xl font-semibold text-graphite group-hover:text-brandBrown transition-colors">
-                        Оплата картою онлайн
-                      </h3>
-                      <p class="text-gray-600">MonoPay - швидко та безпечно</p>
-                    </div>
-                  </div>
-                  <div class="text-blue-600 font-bold text-lg">Миттєво</div>
-                </div>
-              `;
             },
             onCancel: function() {
-              console.log('Payment cancelled');
-              
-              // Reset button
-              btn.disabled = false;
-              btn.innerHTML = `
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-6">
-                      <svg class="text-white w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 class="text-xl font-semibold text-graphite group-hover:text-brandBrown transition-colors">
-                        Оплата картою онлайн
-                      </h3>
-                      <p class="text-gray-600">MonoPay - швидко та безпечно</p>
-                    </div>
-                  </div>
-                  <div class="text-blue-600 font-bold text-lg">Миттєво</div>
-                </div>
-              `;
+              console.log('Payment cancelled by user');
             }
           });
 
           // Open payment modal
-          console.log('Opening MonoPay modal...');
           monoPay.open();
           
         } catch (error) {
           console.error('MonoPay initialization error:', error);
-          alert('Помилка ініціалізації платіжної системи. Спробуйте пізніше або оберіть банківський переказ.');
-          
-          // Reset button
-          btn.disabled = false;
-          btn.innerHTML = `
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-6">
-                  <svg class="text-white w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-xl font-semibold text-graphite group-hover:text-brandBrown transition-colors">
-                    Оплата картою онлайн
-                  </h3>
-                  <p class="text-gray-600">MonoPay - швидко та безпечно</p>
-                </div>
-              </div>
-              <div class="text-blue-600 font-bold text-lg">Миттєво</div>
-            </div>
-          `;
+          alert('Помилка ініціалізації платіжної системи. Будь ласка, оберіть банківський переказ або спробуйте пізніше.');
         }
       }
+
+      // Show bank transfer option
+      function showBankTransfer() {
+        document.getElementById('payment-options').classList.add('hidden');
+        document.getElementById('bank-transfer').classList.remove('hidden');
+        
+        // Update next steps to show bank transfer flow
+        document.getElementById('payment-step').style.display = 'flex';
+        document.getElementById('screenshot-step').style.display = 'flex';
+      }
+
+      // Load MonoPay SDK dynamically with error handling
+      function loadMonoPaySDK() {
+        return new Promise((resolve, reject) => {
+          // Check if already loaded
+          if (window.MonoPay) {
+            resolve();
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = 'https://pay.monobank.ua/sdk/monopay.js';
+          script.onload = () => {
+            console.log('MonoPay SDK loaded successfully');
+            resolve();
+          };
+          script.onerror = () => {
+            console.error('Failed to load MonoPay SDK');
+            reject(new Error('Failed to load MonoPay SDK'));
+          };
+          
+          document.head.appendChild(script);
+        });
+      }
+
+      // Initialize MonoPay SDK when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+        loadMonoPaySDK().catch(error => {
+          console.warn('MonoPay SDK failed to load:', error);
+          // SDK loading failed, but page should still work with bank transfer option
+        });
+      });
     </script>
   </body>
 </html>
