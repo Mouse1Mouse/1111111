@@ -6,6 +6,13 @@ interface OrderFormProps {
   onBack: () => void;
 }
 
+// Helper function to encode form data for Netlify
+function encode(data: Record<string, string>) {
+  return Object.keys(data)
+    .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(data[key]))
+    .join("&");
+}
+
 export default function OrderForm({ onBack }: OrderFormProps) {
   const { items, clearCart } = useCart();
   const [orderSummary, setOrderSummary] = useState("");
@@ -122,15 +129,20 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     fetchBranches();
   }, [selectedCityRef, NOVA_POSHTA_KEY]);
 
-  // Handle city selection
+  // Handle city selection from datalist
   function onCitySelect(name: string) {
-    setCityQuery(name);
     const match = cities.find(
       (c) => c.Description.toLowerCase() === name.trim().toLowerCase()
     );
     if (match) {
       setSelectedCityRef(match.Ref);
       setSelectedCityName(match.Description);
+      setSelectedBranchRef("");
+      setSelectedBranchName("");
+    } else {
+      // If no exact match, clear the selection but keep the query
+      setSelectedCityRef("");
+      setSelectedCityName("");
       setSelectedBranchRef("");
       setSelectedBranchName("");
     }
@@ -152,13 +164,13 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     return fullName.trim() && 
            phone.trim() && 
            contact.trim() && 
-           selectedCityName.trim() && 
+           cityQuery.trim() && 
            selectedBranchName.trim() && 
            items.length > 0;
   };
 
   // Handle form submission
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!isFormValid()) {
@@ -168,10 +180,41 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
     setIsSubmitting(true);
     
-    // Clear cart immediately since form will redirect
-    clearCart();
-    
-    // Form will be submitted by Netlify and redirect to success page
+    try {
+      // Prepare form data for Netlify
+      const formData = {
+        "form-name": "offline-order",
+        fullName,
+        phone,
+        contact,
+        city: cityQuery, // Use cityQuery instead of selectedCityName
+        branch: selectedBranchName,
+        orderSummary,
+        totalSum: totalSum.toString(),
+        comments
+      };
+
+      console.log('Submitting form data:', formData);
+
+      // Submit to Netlify using fetch
+      await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: encode(formData)
+      });
+
+      console.log('Form submitted successfully');
+
+      // Clear cart and redirect to success page with total sum
+      clearCart();
+      window.location.href = `/success.html?total=${totalSum}`;
+      
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Помилка при відправці замовлення. Спробуйте ще раз.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -190,19 +233,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       {/* Order Form */}
       <div className="max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 h-[80vh] overflow-y-auto">
         <form
-          name="offline-order"
-          method="POST"
-          data-netlify="true"
-          action="/success.html"
           onSubmit={handleFormSubmit}
           className="space-y-4"
         >
-          {/* Hidden form name for Netlify */}
-          <input type="hidden" name="form-name" value="offline-order" />
-          
-          {/* Hidden honeypot field for spam protection */}
-          <input type="hidden" name="bot-field" />
-
           {/* ПІБ */}
           <label className="block">
             <span className="text-graphite font-medium mb-2 block">ПІБ *</span>
@@ -247,18 +280,19 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             />
           </label>
 
-          {/* Місто (з пошуком) */}
+          {/* Місто (з пошуком) - ВИПРАВЛЕНО */}
           <label className="block">
             <span className="text-graphite font-medium mb-2 block">Місто *</span>
             <input
               type="text"
               list="city-list"
               name="city"
-              value={selectedCityName || cityQuery}
+              value={cityQuery}
               onChange={(e) => {
                 setCityQuery(e.target.value);
                 onCitySelect(e.target.value);
               }}
+              autoComplete="off"
               required
               disabled={!NOVA_POSHTA_KEY || isSubmitting}
               placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто..." : "API ключ не налаштований"}
@@ -285,6 +319,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 setSelectedBranchName(e.target.value);
                 onBranchSelect(e.target.value);
               }}
+              autoComplete="off"
               required
               disabled={!selectedCityRef || isSubmitting}
               placeholder={
@@ -301,9 +336,6 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             </datalist>
           </label>
 
-          {/* Замовлення (hidden field for Netlify) */}
-          <input type="hidden" name="orderSummary" value={orderSummary} />
-          
           {/* Замовлення (display only) */}
           <label className="block">
             <span className="text-graphite font-medium mb-2 block">Замовлення</span>
@@ -315,9 +347,6 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             />
           </label>
 
-          {/* Загальна сума (hidden field for Netlify) */}
-          <input type="hidden" name="totalSum" value={totalSum.toString()} />
-          
           {/* Загальна сума (display) */}
           <div className="flex justify-between items-center bg-gray-50 p-4 rounded">
             <span className="text-lg font-medium text-graphite">Загальна сума:</span>
