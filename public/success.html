@@ -231,9 +231,9 @@
         });
 
         try {
-          // Create MonoPay instance
+          // Create MonoPay instance with new token
           const monoPay = window.MonoPay.create({
-            token: 'mpbXCUIRaGB_E54bLbeSRCw',
+            token: 'mvM7jyqi6IdiahZwJ__DIbQ',
             amount: parseInt(totalSum) * 100, // Amount in kopecks
             orderId: newOrderId,
             onSuccess: function(response) {
