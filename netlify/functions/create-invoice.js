@@ -1,4 +1,4 @@
-const MONOBANK_TOKEN = process.env.MONOBANK_TOKEN;
+const MONOBANK_TOKEN = 'm3oUJLiHdP4rMFyI8zUyfPw';
 
 exports.handler = async (event, context) => {
   // Дозволяємо тільки POST запити
