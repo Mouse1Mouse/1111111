@@ -105,11 +105,11 @@ export default function Gallery() {
     { 
       id: "5",
       title: "Графітовий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-1",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-39-27_y7efsh.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-3"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-39-27_y7efsh.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-39-39_xx2pza.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-39-45_yxc5eq.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
