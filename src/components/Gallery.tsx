@@ -41,12 +41,11 @@ export default function Gallery() {
     { 
       id: "2",
       title: "Світло-сірий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-1",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-25_byyg4o.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/grey/grey3.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-57-12_nvxzef.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-25_byyg4o.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-49_gxyhm8.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-23_gv4cy0.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
