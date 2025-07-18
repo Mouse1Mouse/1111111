@@ -272,11 +272,11 @@ export default function Gallery() {
     { 
       id: "13",
       title: "Мармур комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-53_y4qjtm.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-58_cy3v6s.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
