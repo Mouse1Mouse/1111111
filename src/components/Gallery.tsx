@@ -45,7 +45,8 @@ export default function Gallery() {
       images: [
         "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-1",
         "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-3"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/grey/grey3.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-57-12_nvxzef.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
