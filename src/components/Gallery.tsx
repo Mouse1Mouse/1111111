@@ -395,6 +395,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "19",
+      title: "Темно синій комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_7_2025-07-18_14-27-12_m5m7rs.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_7_2025-07-18_14-27-12_m5m7rs.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_8_2025-07-18_14-27-12_itd5og.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_9_2025-07-18_14-27-12_bcm4ci.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
