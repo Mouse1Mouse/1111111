@@ -230,11 +230,11 @@ export default function Gallery() {
     { 
       id: "11",
       title: "Квітень комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-30-02_ueefta.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-30-02_ueefta.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-30-05_dbjcml.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-30-08_nnwr6y.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
