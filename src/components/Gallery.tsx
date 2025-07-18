@@ -251,11 +251,11 @@ export default function Gallery() {
     { 
       id: "12",
       title: "Сіра полоска комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-41-15_h6knvo.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836006/photo_2025-06-10_18-41-18_iyoejr.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
