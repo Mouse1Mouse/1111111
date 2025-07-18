@@ -6,12 +6,12 @@ export default function Gallery() {
     { 
       id: "palette",
       title: "Палітра кольорів",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette1",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-17-11_lcrzkl.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette3",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette4"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-17-11_lcrzkl.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-17-13_ikyg6j.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-17-14_a88kkb.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-17-16_luofn9.jpg"
       ],
       setOptions: [],
       pillowOptions: [],
