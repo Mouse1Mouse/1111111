@@ -314,11 +314,11 @@ export default function Gallery() {
     { 
       id: "15",
       title: "Біла клітинка комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered1.jpg",
+      imageUrl: "https://images.pexels.com/photos/1454806/pexels-photo-1454806.jpeg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered3.jpg"
+        "https://images.pexels.com/photos/1454806/pexels-photo-1454806.jpeg",
+        "https://images.pexels.com/photos/1454804/pexels-photo-1454804.jpeg",
+        "https://images.pexels.com/photos/1454805/pexels-photo-1454805.jpeg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
