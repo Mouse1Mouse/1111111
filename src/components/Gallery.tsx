@@ -332,6 +332,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "16",
+      title: "Сіра клітинка комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_1_2025-07-18_14-22-25_ls8abk.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_1_2025-07-18_14-22-25_ls8abk.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_2_2025-07-18_14-22-25_frunfd.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_3_2025-07-18_14-22-25_xrsjhy.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
