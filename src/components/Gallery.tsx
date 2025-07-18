@@ -374,6 +374,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "18",
+      title: "Мятний комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_5_2025-07-18_14-27-12_ywgr4x.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_5_2025-07-18_14-27-12_ywgr4x.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_4_2025-07-18_14-27-12_igsyhg.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_6_2025-07-18_14-27-12_odvut7.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
