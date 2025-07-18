@@ -436,7 +436,7 @@ export default function Gallery() {
         { label: "50×70 (прямокутні)" },
         { label: "70×70 (квадратні)" }
       ]
-    }
+    },
     { 
       id: "21",
       title: "Шоколад комплект",
