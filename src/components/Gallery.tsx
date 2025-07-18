@@ -209,11 +209,11 @@ export default function Gallery() {
     { 
       id: "10",
       title: "Блакитний комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-42_zew2sr.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-42_zew2sr.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-37_jxxfxy.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-39_mkbhth.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
