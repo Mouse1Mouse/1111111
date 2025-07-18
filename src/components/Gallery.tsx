@@ -171,7 +171,7 @@ export default function Gallery() {
       imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
       images: [
         "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green2.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-57-12_nvxzef.jpg",
         "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green3.jpg"
       ],
       setOptions: [
