@@ -15,9 +15,9 @@ export default function AdditionalProducts() {
 
   // Підковдра: опції з цінами
   const pidkovdraOptions = [
-    { label: "145×220", price: 750 },
-    { label: "175×220", price: 850 },
-    { label: "200×220", price: 950 }
+    { label: "145×220", price: 800 },
+    { label: "175×220", price: 900 },
+    { label: "200×220", price: 1000 }
   ];
   const [selectedPidkovdra, setSelectedPidkovdra] = useState(pidkovdraOptions[0].label);
   const [qtyPidkovdra, setQtyPidkovdra] = useState(1);
