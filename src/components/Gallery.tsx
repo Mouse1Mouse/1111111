@@ -147,11 +147,11 @@ export default function Gallery() {
     { 
       id: "7",
       title: "Чорний комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-36_czc5tl.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-36_czc5tl.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-38_tejank.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-46_gbeeyz.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
