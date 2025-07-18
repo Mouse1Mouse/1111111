@@ -24,8 +24,8 @@ export default function AdditionalProducts() {
 
   // Наволочки: опції з цінами
   const navolochOptions = [
-    { label: "50×70", price: 300, shape: "прямокутні" },
-    { label: "70×70", price: 350, shape: "квадратні" }
+    { label: "50×70", price: 350, shape: "прямокутні" },
+    { label: "70×70", price: 400, shape: "квадратні" }
   ];
   const [selectedNavoloch, setSelectedNavoloch] = useState(navolochOptions[0].label);
   const [qtyNavoloch, setQtyNavoloch] = useState(1);
