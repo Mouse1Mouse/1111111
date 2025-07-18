@@ -122,7 +122,7 @@ export default function ProductCard({ item }: ProductCardProps) {
       addItem({
         id: "rezinka",
         title: `Простирадло на резинці (${rezSize})`,
-        imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=400",
+        imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/rezinka.jpg",
         chosenSet: rezSize,
         chosenPillow: "",
         quantity: 1,

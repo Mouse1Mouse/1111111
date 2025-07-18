@@ -6,12 +6,12 @@ export default function Gallery() {
     { 
       id: "palette",
       title: "Палітра кольорів",
-      imageUrl: "/palette1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette1",
       images: [
-        "/palette1.jpg",
-        "/palette2.jpg",
-        "/palette3.jpg",
-        "/palette4.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette3",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/palette4"
       ],
       setOptions: [],
       pillowOptions: [],
@@ -20,7 +20,12 @@ export default function Gallery() {
     { 
       id: "1",
       title: "Бежевий комплект",
-      imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-1",
+      images: [
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-3"
+      ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
@@ -36,11 +41,11 @@ export default function Gallery() {
     { 
       id: "2",
       title: "Світло-сірий комплект",
-      imageUrl: "/grey1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-1",
       images: [
-        "/grey1.jpg",
-        "/grey2.jpg",
-        "/grey3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/grey-set-3"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -57,7 +62,12 @@ export default function Gallery() {
     { 
       id: "3",
       title: "Карамельний комплект",
-      imageUrl: "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-1",
+      images: [
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-3"
+      ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
@@ -73,7 +83,12 @@ export default function Gallery() {
     { 
       id: "4",
       title: "Кремовий комплект",
-      imageUrl: "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-1",
+      images: [
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-3"
+      ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
         { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
@@ -89,11 +104,11 @@ export default function Gallery() {
     { 
       id: "5",
       title: "Графітовий комплект",
-      imageUrl: "/graphite1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-1",
       images: [
-        "/graphite1.jpg",
-        "/graphite2.jpg",
-        "/graphite3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/graphite-set-3"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -110,11 +125,11 @@ export default function Gallery() {
     { 
       id: "6",
       title: "Ніжно-рожевий комплект",
-      imageUrl: "/pink1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-1",
       images: [
-        "/pink1.jpg",
-        "/pink2.jpg",
-        "/pink3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-1",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-2",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-3"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -131,11 +146,11 @@ export default function Gallery() {
     { 
       id: "7",
       title: "Чорний комплект",
-      imageUrl: "/black1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black1.jpg",
       images: [
-        "/black1.jpg",
-        "/black2.jpg",
-        "/black3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/black/black3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -152,11 +167,11 @@ export default function Gallery() {
     { 
       id: "8",
       title: "Салатовий комплект",
-      imageUrl: "/green1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
       images: [
-        "/green1.jpg",
-        "/green2.jpg",
-        "/green3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -173,11 +188,11 @@ export default function Gallery() {
     { 
       id: "9",
       title: "Білий комплект",
-      imageUrl: "/white1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white1.jpg",
       images: [
-        "/white1.jpg",
-        "/white2.jpg",
-        "/white3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -194,11 +209,11 @@ export default function Gallery() {
     { 
       id: "10",
       title: "Блакитний комплект",
-      imageUrl: "/blue1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue1.jpg",
       images: [
-        "/blue1.jpg",
-        "/blue2.jpg",
-        "/blue3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/blue/blue3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -215,11 +230,11 @@ export default function Gallery() {
     { 
       id: "11",
       title: "Квітень комплект",
-      imageUrl: "/kviten1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten1.jpg",
       images: [
-        "/kviten1.jpg",
-        "/kviten2.jpg",
-        "/kviten3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/kviten/kviten3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -236,11 +251,11 @@ export default function Gallery() {
     { 
       id: "12",
       title: "Сіра полоска комплект",
-      imageUrl: "/stripe1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe1.jpg",
       images: [
-        "/stripe1.jpg",
-        "/stripe2.jpg",
-        "/stripe3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/stripe/stripe3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -257,11 +272,11 @@ export default function Gallery() {
     { 
       id: "13",
       title: "Мармур комплект",
-      imageUrl: "/marble1.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble1.jpg",
       images: [
-        "/marble1.jpg",
-        "/marble2.jpg",
-        "/marble3.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/marble/marble3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -278,11 +293,11 @@ export default function Gallery() {
     { 
       id: "14",
       title: "Червоний комплект",
-      imageUrl: "/photo_2025-06-10_18-48-57.jpg",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red1.jpg",
       images: [
-        "/photo_2025-06-10_18-48-57.jpg",
-        "/photo_2025-06-10_18-49-02.jpg",
-        "/photo_2025-06-10_18-49-00.jpg"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
@@ -299,11 +314,11 @@ export default function Gallery() {
     { 
       id: "15",
       title: "Біла клітинка комплект",
-      imageUrl: "https://images.pexels.com/photos/1267438/pexels-photo-1267438.jpeg?auto=compress&cs=tinysrgb&w=1200",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered1.jpg",
       images: [
-        "https://images.pexels.com/photos/1267438/pexels-photo-1267438.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=1200",
-        "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=1200"
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered1.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered2.jpg",
+        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white-checkered/white-checkered3.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },

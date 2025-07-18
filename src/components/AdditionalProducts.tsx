@@ -61,7 +61,7 @@ export default function AdditionalProducts() {
     addItem({
       id: `rezinka-${chosenSize}`,
       title: `Резинка (${chosenSize})`,
-      imageUrl: "https://images.pexels.com/photos/1034584/pexels-photo-1034584.jpeg?auto=compress&cs=tinysrgb&w=400",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/rezinka.jpg",
       chosenSet: chosenSize,
       chosenPillow: "",
       quantity: 1,
@@ -74,7 +74,7 @@ export default function AdditionalProducts() {
     addItem({
       id: `pidkovdra-${selectedOpt.label}`,
       title: `Підковдра (${selectedOpt.label})`,
-      imageUrl: "https://images.pexels.com/photos/1267438/pexels-photo-1267438.jpeg?auto=compress&cs=tinysrgb&w=400",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/pidkovdra.jpg",
       chosenSet: selectedOpt.label,
       chosenPillow: "",
       quantity: qtyPidkovdra,
@@ -87,7 +87,7 @@ export default function AdditionalProducts() {
     addItem({
       id: `navolochky-${selectedOpt.label}`,
       title: `Наволочки (${selectedOpt.label})`,
-      imageUrl: "https://images.pexels.com/photos/1743229/pexels-photo-1743229.jpeg?auto=compress&cs=tinysrgb&w=400",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/navolochky.jpg",
       chosenSet: selectedOpt.label,
       chosenPillow: "",
       quantity: qtyNavoloch,
@@ -100,7 +100,7 @@ export default function AdditionalProducts() {
     addItem({
       id: `prostyradlo-${selectedOpt.label}`,
       title: `Простирадло (${selectedOpt.label})`,
-      imageUrl: "https://images.pexels.com/photos/1329711/pexels-photo-1329711.jpeg?auto=compress&cs=tinysrgb&w=400",
+      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/prostyradlo.jpg",
       chosenSet: selectedOpt.label,
       chosenPillow: "",
       quantity: qtyProstyradlo,
