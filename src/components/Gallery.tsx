@@ -293,11 +293,11 @@ export default function Gallery() {
     { 
       id: "14",
       title: "Червоний комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-49-02_vd0h1l.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/red/red3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-49-02_vd0h1l.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-48-57_u9aihf.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-49-00_qdxyco.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
