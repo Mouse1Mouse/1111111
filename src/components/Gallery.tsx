@@ -299,11 +299,11 @@ export default function Gallery() {
     { 
       id: "15",
       title: "Біла клітинка комплект",
-      imageUrl: "/white-checkered1.jpg",
+      imageUrl: "/photo_4_2025-07-18_13-14-59.jpg",
       images: [
-        "/white-checkered1.jpg",
-        "/white-checkered2.jpg",
-        "/white-checkered3.jpg"
+        "/photo_4_2025-07-18_13-14-59.jpg",
+        "/photo_2_2025-07-18_13-14-59.jpg",
+        "/photo_3_2025-07-18_13-14-59.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
