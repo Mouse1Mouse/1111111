@@ -394,7 +394,7 @@ export default function Gallery() {
         { label: "50×70 (прямокутні)" },
         { label: "70×70 (квадратні)" }
       ]
-    }
+    },
     { 
       id: "19",
       title: "Темно синій комплект",
