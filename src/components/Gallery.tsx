@@ -125,11 +125,11 @@ export default function Gallery() {
     { 
       id: "6",
       title: "Ніжно-рожевий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-1",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7340_jyw9nf.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/pink-set-3"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7340_jyw9nf.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7341_yausbs.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/IMG_7342_yyipsl.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
