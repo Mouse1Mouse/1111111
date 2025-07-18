@@ -171,8 +171,8 @@ export default function Gallery() {
       imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
       images: [
         "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-57-12_nvxzef.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-57-08_tibrme.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-57-13_de7wm9.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
