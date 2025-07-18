@@ -32,9 +32,9 @@ export default function AdditionalProducts() {
 
   // Простирадло: опції з цінами
   const prostyradloOptions = [
-    { label: "145×220", price: 550 },
-    { label: "200×220", price: 600 },
-    { label: "220×240", price: 650 }
+    { label: "145×220", price: 600 },
+    { label: "200×220", price: 700 },
+    { label: "220×240", price: 750 }
   ];
   const [selectedProstyradlo, setSelectedProstyradlo] = useState(prostyradloOptions[0].label);
   const [qtyProstyradlo, setQtyProstyradlo] = useState(1);
