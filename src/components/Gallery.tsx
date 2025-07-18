@@ -437,6 +437,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "21",
+      title: "Шоколад комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_3_2025-07-18_14-50-14_sbxzlr.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_3_2025-07-18_14-50-14_sbxzlr.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_2_2025-07-18_14-50-14_yguf6b.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752839468/photo_1_2025-07-18_14-50-14_v08hcu.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
