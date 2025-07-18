@@ -189,11 +189,11 @@ export default function Gallery() {
     { 
       id: "9",
       title: "Білий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white1.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_02-01-42_vydtid.jpg",
       images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white1.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white2.jpg",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/white/white3.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_02-01-42_vydtid.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-01-46_jgmfur.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-01-56_rxvbng.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
