@@ -18,27 +18,6 @@ export default function Gallery() {
       isPalette: true
     },
     { 
-      id: "1",
-      title: "Бежевий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-1",
-      images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/beige-set-3"
-      ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
-    },
-    { 
       id: "2",
       title: "Світло-сірий комплект",
       imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-25_byyg4o.jpg",
@@ -46,48 +25,6 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-25_byyg4o.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-49_gxyhm8.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-23_gv4cy0.jpg"
-      ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
-    },
-    { 
-      id: "3",
-      title: "Карамельний комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-1",
-      images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/caramel-set-3"
-      ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
-    },
-    { 
-      id: "4",
-      title: "Кремовий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-1",
-      images: [
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-1",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-2",
-        "https://res.cloudinary.com/miva-textil/image/upload/v1/products/cream-set-3"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
