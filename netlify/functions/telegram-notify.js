@@ -1,5 +1,5 @@
 const TELEGRAM_BOT_TOKEN = '7679438863:AAFdSt_VKSQCOEHMpsgHlRnu5Pe5Q8itWDw';
-const CHAT_IDS = ['923730033']; // Додайте більше chat_id за потреби
+const CHAT_IDS = ['923730033', '761026351']; // Додайте більше chat_id за потреби
 
 exports.handler = async (event, context) => {
   // Дозволяємо тільки POST запити
