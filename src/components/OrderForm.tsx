@@ -249,6 +249,25 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
       console.log('Form submitted successfully');
 
+      // Відправляємо Telegram сповіщення
+      try {
+        await fetch("/.netlify/functions/telegram-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName,
+            phone,
+            orderSummary,
+            totalSum: totalSum.toString(),
+            paymentMethod: 'Офлайн замовлення'
+          })
+        });
+        console.log('Telegram notification sent');
+      } catch (telegramError) {
+        console.error('Telegram notification failed:', telegramError);
+        // Не блокуємо процес замовлення через помилку Telegram
+      }
+
       // Clear cart and redirect to success page with total sum
       clearCart();
       window.location.href = `/success.html?total=${totalSum}`;
