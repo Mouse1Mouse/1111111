@@ -216,6 +216,10 @@
         });
 
         try {
+          // Збираємо детальну інформацію про замовлення з localStorage
+          const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
+          const detailedOrderSummary = orderData.orderSummary || 'Деталі замовлення недоступні';
+
           // Show loading state
           const button = event.target;
           const originalText = button.innerHTML;
@@ -239,8 +243,9 @@
             body: JSON.stringify({
               amount: parseInt(totalSum),
               orderId: newOrderId,
-              customerName: orderData.fullName || 'Клієнт MIVA',
-              customerEmail: orderData.contact || ''
+              customerName: orderData.fullName || 'Клієнт MIVA', 
+              customerEmail: orderData.contact || '',
+              orderDetails: detailedOrderSummary
             })
           });
 
@@ -250,6 +255,29 @@
           if (data.success && data.invoiceUrl) {
             // Redirect to Monobank payment page
             console.log('Redirecting to:', data.invoiceUrl);
+            
+            // Відправляємо Telegram сповіщення для онлайн оплати
+            try {
+              await fetch('/.netlify/functions/telegram-notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fullName: orderData.fullName || 'Клієнт MIVA',
+                  phone: orderData.phone || 'Не вказано',
+                  contact: orderData.contact || 'Не вказано',
+                  city: orderData.city || 'Не вказано',
+                  branch: orderData.branch || 'Не вказано',
+                  orderSummary: detailedOrderSummary,
+                  totalSum: totalSum.toString(),
+                  comments: orderData.comments || '',
+                  paymentMethod: 'Онлайн оплата (Monobank)'
+                })
+              });
+              console.log('Telegram notification sent for online payment');
+            } catch (telegramError) {
+              console.error('Telegram notification failed:', telegramError);
+            }
+            
             window.location.href = data.invoiceUrl;
           } else {
             throw new Error(data.error || 'Помилка створення рахунку');

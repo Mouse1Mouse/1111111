@@ -251,15 +251,33 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
       // Відправляємо Telegram сповіщення
       try {
+        // Збираємо детальну інформацію про замовлення
+        const detailedOrderSummary = items
+          .map((item) => {
+            let itemDetails = `• ${item.title}`;
+            itemDetails += `\n  Розмір: ${item.chosenSet}`;
+            if (item.chosenPillow) {
+              itemDetails += `\n  Наволочки: ${item.chosenPillow}`;
+            }
+            itemDetails += `\n  Кількість: ${item.quantity}`;
+            itemDetails += `\n  Ціна: ${item.price ? item.price * item.quantity : 'уточнюється'} грн`;
+            return itemDetails;
+          })
+          .join('\n\n');
+
         await fetch("/.netlify/functions/telegram-notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fullName,
             phone,
-            orderSummary,
+            contact,
+            city: selectedCityName,
+            branch: selectedBranchName,
+            orderSummary: detailedOrderSummary,
             totalSum: totalSum.toString(),
-            paymentMethod: 'Офлайн замовлення'
+            comments,
+            paymentMethod: 'Офлайн замовлення (буде уточнено)'
           })
         });
         console.log('Telegram notification sent');

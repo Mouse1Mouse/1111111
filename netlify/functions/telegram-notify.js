@@ -30,17 +30,36 @@ exports.handler = async (event, context) => {
 
   try {
     const orderData = JSON.parse(event.body);
-    const { fullName, phone, orderSummary, totalSum, paymentMethod = 'Не вказано' } = orderData;
+    const { 
+      fullName, 
+      phone, 
+      contact, 
+      city, 
+      branch, 
+      orderSummary, 
+      totalSum, 
+      comments, 
+      paymentMethod = 'Не вказано' 
+    } = orderData;
 
     // Формуємо повідомлення
-    const message = `🔔 НОВЕ ЗАМОВЛЕННЯ!
+    const message = `🔔 НОВЕ ЗАМОВЛЕННЯ MIVA!
 
-👤 Ім'я: ${fullName}
+👤 ПІБ: ${fullName}
 📞 Телефон: ${phone}
-🛏️ Товар: 
+📧 Контакт: ${contact || 'Не вказано'}
+
+📍 ДОСТАВКА:
+🏙️ Місто: ${city || 'Не вказано'}
+📦 Відділення: ${branch || 'Не вказано'}
+
+🛏️ ЗАМОВЛЕННЯ:
 ${orderSummary}
+
 💰 Сума: ${totalSum} грн
 💳 Спосіб оплати: ${paymentMethod}
+
+${comments ? `💬 Коментар клієнта:\n${comments}\n\n` : ''}⚠️ ВАЖЛИВО: Зв'яжіться з клієнтом протягом 2 годин!
 
 ⏰ Час: ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
 
