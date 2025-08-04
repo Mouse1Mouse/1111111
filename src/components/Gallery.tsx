@@ -102,27 +102,6 @@ export default function Gallery() {
       ]
     },
     { 
-      id: "8",
-      title: "Салатовий комплект",
-      imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/green/green1.jpg",
-      images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836011/photo_2025-06-10_01-57-12_nvxzef.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-57-08_tibrme.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-57-13_de7wm9.jpg"
-      ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
-    },
-    { 
       id: "9",
       title: "Білий комплект",
       imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_02-01-42_vydtid.jpg",
