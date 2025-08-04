@@ -167,10 +167,10 @@ export default function Gallery() {
     { 
       id: "12",
       title: "Сіра полоска комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-41-15_h6knvo.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-41-15_h6knvo.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836006/photo_2025-06-10_18-41-18_iyoejr.jpg"
       ],
       setOptions: [
@@ -188,10 +188,10 @@ export default function Gallery() {
     { 
       id: "13",
       title: "Мармур комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-53_y4qjtm.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-53_y4qjtm.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-58_cy3v6s.jpg"
       ],
       setOptions: [
@@ -230,10 +230,10 @@ export default function Gallery() {
     { 
       id: "15",
       title: "Біла клітинка комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_3_2025-07-18_13-14-59_z9fvck.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2_2025-07-18_13-14-59_azfjbw.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_3_2025-07-18_13-14-59_z9fvck.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2_2025-07-18_13-14-59_azfjbw.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_3_2025-07-18_13-14-59_z9fvck.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836006/photo_4_2025-07-18_13-14-59_ubtpl3.jpg"
       ],
       setOptions: [
