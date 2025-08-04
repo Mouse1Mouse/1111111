@@ -293,11 +293,11 @@ export default function Gallery() {
     { 
       id: "17",
       title: "Лаванда комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_2_2025-07-18_14-26-28_ziahih.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_20_2025-08-04_21-36-01_mhvfvp.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_2_2025-07-18_14-26-28_ziahih.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_1_2025-07-18_14-26-28_wpytjb.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_3_2025-07-18_14-26-28_nbxhlh.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_20_2025-08-04_21-36-01_mhvfvp.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336209/photo_19_2025-08-04_21-36-01_cxwmzb.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336209/photo_21_2025-08-04_21-36-01_ysouqi.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
