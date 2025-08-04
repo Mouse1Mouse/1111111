@@ -83,11 +83,11 @@ export default function Gallery() {
     { 
       id: "7",
       title: "Чорний комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-36_czc5tl.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_8_2025-08-04_21-36-01_kaibkd.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-36_czc5tl.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-38_tejank.jpg",
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-53-46_gbeeyz.jpg"
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_8_2025-08-04_21-36-01_kaibkd.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_10_2025-08-04_21-36-01_qg7qjl.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_9_2025-08-04_21-36-01_rpxtzw.jpg"
       ],
       setOptions: [
         { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
