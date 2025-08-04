@@ -415,6 +415,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "23",
+      title: "Ліловий комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_15_2025-08-04_21-36-01_tubepc.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_15_2025-08-04_21-36-01_tubepc.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_17_2025-08-04_21-36-01_dfzhme.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_16_2025-08-04_21-36-01_j1xhox.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
