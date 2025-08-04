@@ -31,7 +31,7 @@ export default function ProductCard({ item }: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Rezinka states
-  const standardRezinkaSizes = ["160×200×20", "170×200×20", "180×200×20"];
+  const standardRezinkaSizes = ["120×200×20", "140×200×20", "180×200×20"];
   const [selectedRezinkaSize, setSelectedRezinkaSize] = useState(standardRezinkaSizes[0]);
   const [customRezWidth, setCustomRezWidth] = useState("");
   const [customRezLength, setCustomRezLength] = useState("");

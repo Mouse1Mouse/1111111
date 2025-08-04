@@ -6,7 +6,7 @@ export default function AdditionalProducts() {
   const [activeTab, setActiveTab] = useState<"rezinka" | "pidkovdra" | "navolochky" | "prostyradlo">("rezinka");
 
   // Резинка: вибір стандартного або кастомного розміру
-  const standardSizes = ["160×200×20", "170×200×20", "180×200×20"];
+  const standardSizes = ["120×200×20", "140×200×20", "180×200×20"];
   const [selectedStdSize, setSelectedStdSize] = useState(standardSizes[0]);
   const [customWidth, setCustomWidth] = useState("");
   const [customHeight, setCustomHeight] = useState("");
