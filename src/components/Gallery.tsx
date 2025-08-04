@@ -62,9 +62,9 @@ export default function Gallery() {
     { 
       id: "6",
       title: "Ніжно-рожевий комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7340_jyw9nf.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754339428/photo_2025-08-04_22-29-57_qxuync.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7340_jyw9nf.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754339428/photo_2025-08-04_22-29-57_qxuync.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7341_yausbs.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/IMG_7342_yyipsl.jpg"
       ],
