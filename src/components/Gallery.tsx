@@ -356,9 +356,9 @@ export default function Gallery() {
     { 
       id: "21",
       title: "Шоколад комплект",
-      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_3_2025-07-18_14-50-14_sbxzlr.jpg",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754339978/photo_2025-08-04_22-39-20_zmdjbw.jpg",
       images: [
-        "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_3_2025-07-18_14-50-14_sbxzlr.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754339978/photo_2025-08-04_22-39-20_zmdjbw.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_2_2025-07-18_14-50-14_yguf6b.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752839468/photo_1_2025-07-18_14-50-14_v08hcu.jpg"
       ],
