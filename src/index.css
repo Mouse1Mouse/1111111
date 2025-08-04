@@ -32,3 +32,29 @@ html {
 .text-shadow-md {
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
+
+/* Покращення відображення зображень */
+.product-image {
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Адаптивні розміри для різних екранів */
+@media (max-width: 640px) {
+  .product-image {
+    aspect-ratio: 16/10;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .product-image {
+    aspect-ratio: 4/3;
+  }
+}
+
+@media (min-width: 1025px) {
+  .product-image {
+    aspect-ratio: 5/4;
+  }
+}

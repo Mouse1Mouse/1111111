@@ -257,7 +257,7 @@ export default function ProductCard({ item }: ProductCardProps) {
             <img
               src={images[currentImageIndex]}
               alt={`${item.title} - зображення ${currentImageIndex + 1}`}
-              className="w-full h-80 object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
+              className="w-full h-64 sm:h-72 lg:h-80 product-image transition-transform duration-500 group-hover:scale-105 cursor-pointer"
               onClick={openModal}
             />
             
