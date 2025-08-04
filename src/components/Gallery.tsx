@@ -415,6 +415,27 @@ export default function Gallery() {
         { label: "70×70 (квадратні)" }
       ]
     }
+    { 
+      id: "24",
+      title: "Молочний комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_11_2025-08-04_21-36-01_rb3y8j.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_11_2025-08-04_21-36-01_rb3y8j.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_12_2025-08-04_21-36-01_oxsz5v.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_13_2025-08-04_21-36-01_gbb0cs.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
+    }
   ];
 
   return (
