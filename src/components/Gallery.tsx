@@ -456,6 +456,27 @@ export default function Gallery() {
         { label: "50×70 (прямокутні)" },
         { label: "70×70 (квадратні)" }
       ]
+    },
+    { 
+      id: "26",
+      title: "Віридіан комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_5_2025-08-19_21-31-40_ighrxl.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_5_2025-08-19_21-31-40_ighrxl.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_6_2025-08-19_21-31-40_z0ggck.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_4_2025-08-19_21-31-40_houwze.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1400 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1500 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1550 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1600 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1700 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
     }
   ];
 
