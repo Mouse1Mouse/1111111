@@ -29,36 +29,76 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const orderData = JSON.parse(event.body);
+    // Логуємо сирі дані що прийшли
+    console.log('🔍 Сирі дані event.body:', event.body);
+    console.log('🔍 Тип event.body:', typeof event.body);
+
+    // Парсимо дані
+    let orderData;
+    try {
+      orderData = JSON.parse(event.body);
+      console.log('✅ Успішно розпарсили JSON:', orderData);
+    } catch (parseError) {
+      console.error('❌ Помилка парсингу JSON:', parseError.message);
+      return {
+        statusCode: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        },
+        body: JSON.stringify({ 
+          success: false,
+          error: 'Некоректний JSON',
+          details: parseError.message
+        })
+      };
+    }
+
+    // Витягуємо дані з безпечними значеннями за замовчуванням
     const { 
-      fullName, 
-      phone, 
-      contact, 
-      city, 
-      branch, 
-      orderSummary, 
-      totalSum, 
-      comments, 
-      paymentMethod = 'Не вказано' 
+      fullName = 'Не вказано', 
+      phone = 'Не вказано', 
+      contact = 'Не вказано', 
+      city = 'Не вказано', 
+      branch = 'Не вказано', 
+      orderSummary = 'Деталі замовлення відсутні', 
+      totalSum = '0', 
+      comments = '', 
+      paymentMethod = 'Не вказано',
+      orderId = null
     } = orderData;
+
+    // Логуємо отримані дані
+    console.log('📋 Отримані дані замовлення:', {
+      fullName,
+      phone,
+      contact,
+      city,
+      branch,
+      orderSummary: orderSummary.substring(0, 100) + '...', // Скорочена версія для логу
+      totalSum,
+      comments,
+      paymentMethod,
+      orderId
+    });
 
     // Формуємо повідомлення
     const message = `🔔 *НОВЕ ЗАМОВЛЕННЯ MIVA!*
 
-👤 *ПІБ:* ${fullName || '—'}
-📞 *Телефон:* ${phone || '—'}
-📧 *Контакт:* ${contact || 'Не вказано'}
+👤 *ПІБ:* ${fullName}
+📞 *Телефон:* ${phone}
+📧 *Контакт:* ${contact}
 
 📍 *ДОСТАВКА:*
-🏙️ *Місто:* ${city || 'Не вказано'}
-📦 *Відділення:* ${branch || 'Не вказано'}
+🏙️ *Місто:* ${city}
+📦 *Відділення:* ${branch}
 
 🛏️ *ЗАМОВЛЕННЯ:*
-${orderSummary || 'Деталі замовлення відсутні'}
+${orderSummary}
 
-💰 *Сума:* ${totalSum || '0'} грн
+💰 *Сума:* ${totalSum} грн
 💳 *Спосіб оплати:* ${paymentMethod}
-
+${orderId ? `🆔 *ID замовлення:* ${orderId}\n` : ''}
 ${comments ? `💬 *Коментар клієнта:*\n${comments}\n\n` : ''}⚠️ *ВАЖЛИВО:* Зв'яжіться з клієнтом протягом 2 годин!
 
 ⏰ *Час:* ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
