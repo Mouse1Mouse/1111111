@@ -83,25 +83,25 @@ exports.handler = async (event, context) => {
     });
 
     // Формуємо повідомлення
-    const message = `🔔 *НОВЕ ЗАМОВЛЕННЯ MIVA!*
+    const message = `🔔 <b>НОВЕ ЗАМОВЛЕННЯ MIVA!</b>
 
-👤 *ПІБ:* ${fullName}
-📞 *Телефон:* ${phone}
-📧 *Контакт:* ${contact}
+👤 <b>ПІБ:</b> ${fullName}
+📞 <b>Телефон:</b> ${phone}
+📧 <b>Контакт:</b> ${contact}
 
-📍 *ДОСТАВКА:*
-🏙️ *Місто:* ${city}
-📦 *Відділення:* ${branch}
+📍 <b>ДОСТАВКА:</b>
+🏙️ <b>Місто:</b> ${city}
+📦 <b>Відділення:</b> ${branch}
 
-🛏️ *ЗАМОВЛЕННЯ:*
+🛏️ <b>ЗАМОВЛЕННЯ:</b>
 ${orderSummary}
 
-💰 *Сума:* ${totalSum} грн
-💳 *Спосіб оплати:* ${paymentMethod}
-${orderId ? `🆔 *ID замовлення:* ${orderId}\n` : ''}
-${comments ? `💬 *Коментар клієнта:*\n${comments}\n\n` : ''}⚠️ *ВАЖЛИВО:* Зв'яжіться з клієнтом протягом 2 годин!
+💰 <b>Сума:</b> ${totalSum} грн
+💳 <b>Спосіб оплати:</b> ${paymentMethod}
+${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}
+${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : ''}⚠️ <b>ВАЖЛИВО:</b> Зв'яжіться з клієнтом протягом 2 годин!
 
-⏰ *Час:* ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
+⏰ <b>Час:</b> ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
 
     // Логуємо повідомлення перед відправкою
     console.log('📤 Повідомлення перед відправкою:', message);
@@ -135,7 +135,7 @@ ${comments ? `💬 *Коментар клієнта:*\n${comments}\n\n` : ''}⚠
           body: JSON.stringify({
             chat_id: chatId,
             text: message,
-            parse_mode: 'Markdown'
+            parse_mode: 'HTML'
           })
         });
 
