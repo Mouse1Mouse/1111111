@@ -1,4 +1,4 @@
-const TELEGRAM_BOT_TOKEN = '7679438863:AAFdSt_VKSQCOEHMpsgHlRnu5Pe5Q8itWDw';
+const TELEGRAM_BOT_TOKEN = '8073830189:AAH4P8m1im6RTSIXpG859e9bQBGetjcvdmY';
 const CHAT_IDS = ['923730033', '761026351', '432380172']; // Додайте більше chat_id за потреби
 
 exports.handler = async (event, context) => {
@@ -82,24 +82,23 @@ exports.handler = async (event, context) => {
       orderId
     });
 
-    // Формуємо повідомлення
+    // Формуємо красиве повідомлення з емодзі
     const message = `🔔 <b>НОВЕ ЗАМОВЛЕННЯ MIVA!</b>
 
-👤 <b>ПІБ:</b> ${fullName}
+👤 <b>Клієнт:</b> ${fullName}
 📞 <b>Телефон:</b> ${phone}
 📧 <b>Контакт:</b> ${contact}
 
-📍 <b>ДОСТАВКА:</b>
+📍 <b>Доставка:</b>
 🏙️ <b>Місто:</b> ${city}
 📦 <b>Відділення:</b> ${branch}
 
-🛏️ <b>ЗАМОВЛЕННЯ:</b>
+🛏️ <b>Замовлення:</b>
 ${orderSummary}
 
-💰 <b>Сума:</b> ${totalSum} грн
+💰 <b>Загальна сума:</b> ${totalSum} грн
 💳 <b>Спосіб оплати:</b> ${paymentMethod}
-${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}
-${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : ''}⚠️ <b>ВАЖЛИВО:</b> Зв'яжіться з клієнтом протягом 2 годин!
+${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : ''}⚠️ <b>ВАЖЛИВО:</b> Зв'яжіться з клієнтом протягом 2 годин!
 
 ⏰ <b>Час:</b> ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
 
@@ -122,55 +121,59 @@ ${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : '
       };
     }
 
-    // Відправляємо повідомлення кожному chat_id окремо
-    const sendPromises = CHAT_IDS.map(async (chatId) => {
-      try {
-        console.log(`📤 Відправляємо повідомлення до chat_id ${chatId}...`);
-        
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML'
-          })
-        });
-
-        const result = await response.json();
-        
-        // Логуємо результат запиту
-        console.log(`📊 Відповідь для chat_id ${chatId}:`, {
-          status: response.status,
-          ok: response.ok,
-          data: result
-        });
-        
-        if (!response.ok) {
-          console.error(`❌ Помилка відправки до chat_id ${chatId}:`, {
-            status: response.status,
-            error: result.description || result.error_code,
-            fullResponse: result
+    // Функція для відправки повідомлення в Telegram
+    const sendTelegramMessage = async (message) => {
+      const sendPromises = CHAT_IDS.map(async (chatId) => {
+        try {
+          console.log(`📤 Відправляємо повідомлення до chat_id ${chatId}...`);
+          
+          const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: message,
+              parse_mode: 'HTML'
+            })
           });
-          return { chatId, success: false, error: result.description || 'Unknown error' };
+
+          const result = await response.json();
+          
+          // Логуємо результат запиту
+          console.log(`📊 Відповідь для chat_id ${chatId}:`, {
+            status: response.status,
+            ok: response.ok,
+            data: result
+          });
+          
+          if (!response.ok) {
+            console.error(`❌ Помилка відправки до chat_id ${chatId}:`, {
+              status: response.status,
+              error: result.description || result.error_code,
+              fullResponse: result
+            });
+            return { chatId, success: false, error: result.description || 'Unknown error' };
+          }
+
+          console.log(`✅ Повідомлення успішно відправлено до chat_id ${chatId}`);
+          return { chatId, success: true, messageId: result.result?.message_id };
+          
+        } catch (error) {
+          console.error(`❌ Виняток при відправці до chat_id ${chatId}:`, {
+            error: error.message,
+            stack: error.stack
+          });
+          return { chatId, success: false, error: error.message };
         }
+      });
 
-        console.log(`✅ Повідомлення успішно відправлено до chat_id ${chatId}`);
-        return { chatId, success: true, messageId: result.result?.message_id };
-        
-      } catch (error) {
-        console.error(`❌ Виняток при відправці до chat_id ${chatId}:`, {
-          error: error.message,
-          stack: error.stack
-        });
-        return { chatId, success: false, error: error.message };
-      }
-    });
+      return await Promise.all(sendPromises);
+    };
 
-    // Чекаємо на всі відправки
-    const results = await Promise.all(sendPromises);
+    // Відправляємо повідомлення
+    const results = await sendTelegramMessage(message);
     
     // Підраховуємо результати
     const successful = results.filter(r => r.success).length;
@@ -194,6 +197,7 @@ ${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : '
         'Access-Control-Allow-Headers': 'Content-Type'
       },
       body: JSON.stringify({
+        status: "ok",
         success: true,
         message: `Повідомлення відправлено: ${successful} успішних, ${failed} невдалих`,
         results: results,
