@@ -96,13 +96,19 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             <p className="text-xs sm:text-sm text-graphite">Розмір наволочок: {item.chosenPillow}</p>
                           )}
                           <div className="mt-2 flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => updateQuantity(item.id, item.chosenSet, item.chosenPillow, Math.max(1, parseInt(e.target.value)))}
-                              className="w-16 sm:w-20 border border-gray-300 rounded p-1 text-sm focus:border-brandBrown focus:ring focus:ring-brandBrown/20"
-                            />
+                            {item.id.startsWith('rezinka') ? (
+                              <span className="text-sm text-graphite bg-gray-100 px-3 py-1 rounded">
+                                Кількість: {item.quantity}
+                              </span>
+                            ) : (
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateQuantity(item.id, item.chosenSet, item.chosenPillow, Math.max(1, parseInt(e.target.value)))}
+                                className="w-16 sm:w-20 border border-gray-300 rounded p-1 text-sm focus:border-brandBrown focus:ring focus:ring-brandBrown/20"
+                              />
+                            )}
                             <button
                               onClick={() => removeItem(item.id, item.chosenSet, item.chosenPillow)}
                               className="text-red-500 hover:text-red-700 text-xs sm:text-sm font-medium"
