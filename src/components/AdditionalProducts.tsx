@@ -62,7 +62,6 @@ export default function AdditionalProducts() {
   };
 
   const handleAddRezinka = () => {
-    let chosenSize = selectedStdSize;
     let rezPrice = 450; // Default price for custom sizes
     
     const chosenSize = customWidth && customHeight && customLength && isCustomValid()
