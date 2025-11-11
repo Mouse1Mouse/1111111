@@ -31,12 +31,20 @@ export default function ProductCard({ item }: ProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Rezinka states
-  const standardRezinkaSizes = ["120×200×20", "140×200×20", "180×200×20"];
-  const [selectedRezinkaSize, setSelectedRezinkaSize] = useState(standardRezinkaSizes[0]);
+  const standardRezinkaSizes = [
+    { size: "80×200×20", price: 250 },
+    { size: "120×200×20", price: 250 },
+    { size: "140×200×20", price: 250 },
+    { size: "160×200×20", price: 250 },
+    { size: "160×200×30", price: 450 },
+    { size: "180×200×20", price: 450 },
+    { size: "180×200×30", price: 450 },
+    { size: "200×220×20", price: 450 }
+  ];
+  const [selectedRezinkaSize, setSelectedRezinkaSize] = useState(standardRezinkaSizes[0].size);
   const [customRezWidth, setCustomRezWidth] = useState("");
   const [customRezLength, setCustomRezLength] = useState("");
   const [customRezHeight, setCustomRezHeight] = useState("");
-  const priceRezinka = 250;
   
   const { addItem } = useCart();
 
@@ -116,9 +124,17 @@ export default function ProductCard({ item }: ProductCardProps) {
     // 2) If rezinka checkbox is checked, add the fitted-sheet
     if (includeRezinka) {
       let rezSize = selectedRezinkaSize;
+      let rezPrice = 450; // Default price for custom sizes
+      
       if (customRezWidth && customRezLength && customRezHeight && isCustomRezValid()) {
         rezSize = `${customRezWidth}×${customRezLength}×${customRezHeight}`;
+        rezPrice = 450; // Custom sizes are 450 грн
+      } else {
+        // Find price for standard size
+        const standardSize = standardRezinkaSizes.find(s => s.size === selectedRezinkaSize);
+        rezPrice = standardSize ? standardSize.price : 450;
       }
+      
       addItem({
         id: "rezinka",
         title: `Простирадло на резинці (${rezSize})`,
@@ -126,7 +142,7 @@ export default function ProductCard({ item }: ProductCardProps) {
         chosenSet: rezSize,
         chosenPillow: "",
         quantity: 1,
-        price: priceRezinka,
+        price: rezPrice,
       });
     }
   };
@@ -366,27 +382,27 @@ export default function ProductCard({ item }: ProductCardProps) {
               onChange={e => setIncludeRezinka(e.target.checked)}
               className="mr-2 w-4 h-4 text-brandBrown bg-gray-100 border-gray-300 rounded focus:ring-brandBrown focus:ring-2"
             />
-            <span className="text-graphite">Додати простирадло на резинці (+{priceRezinka} грн)</span>
+            <span className="text-graphite">Додати простирадло на резинці</span>
           </label>
 
           {includeRezinka && (
             <div id="rezinka-inputs" className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <label className="block text-graphite font-medium mb-2">
-                Стандартний розмір простирадла на резинці:
+                Оберіть розмір простирадла на резинці:
               </label>
               <select
                 value={selectedRezinkaSize}
                 onChange={e => setSelectedRezinkaSize(e.target.value)}
                 className="w-full border border-gray-300 rounded p-2 mb-4 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors"
               >
-                {standardRezinkaSizes.map(sz => (
-                  <option key={sz} value={sz}>
-                    {sz}
+                {standardRezinkaSizes.map(item => (
+                  <option key={item.size} value={item.size}>
+                    {item.size} — {item.price} грн
                   </option>
                 ))}
               </select>
 
-              <p className="text-graphite font-medium mb-2">Або введіть власні розміри (максимальні: 180×200×20):</p>
+              <p className="text-graphite font-medium mb-2">Або введіть власні розміри (450 грн, максимальні: 220×240×30):</p>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <input
                   type="number"
@@ -412,7 +428,7 @@ export default function ProductCard({ item }: ProductCardProps) {
               </div>
               {!isCustomRezValid() && (customRezWidth || customRezLength || customRezHeight) && (
                 <p className="text-red-600 text-sm">
-                  Введіть коректні розміри (максимальні: 180×200×20).
+                  Введіть коректні розміри (максимальні: 220×240×30).
                 </p>
               )}
             </div>

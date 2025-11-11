@@ -6,12 +6,20 @@ export default function AdditionalProducts() {
   const [activeTab, setActiveTab] = useState<"rezinka" | "pidkovdra" | "navolochky" | "prostyradlo">("rezinka");
 
   // Резинка: вибір стандартного або кастомного розміру
-  const standardSizes = ["120×200×20", "140×200×20", "180×200×20"];
-  const [selectedStdSize, setSelectedStdSize] = useState(standardSizes[0]);
+  const standardSizes = [
+    { size: "80×200×20", price: 250 },
+    { size: "120×200×20", price: 250 },
+    { size: "140×200×20", price: 250 },
+    { size: "160×200×20", price: 250 },
+    { size: "160×200×30", price: 450 },
+    { size: "180×200×20", price: 450 },
+    { size: "180×200×30", price: 450 },
+    { size: "200×220×20", price: 450 }
+  ];
+  const [selectedStdSize, setSelectedStdSize] = useState(standardSizes[0].size);
   const [customWidth, setCustomWidth] = useState("");
   const [customHeight, setCustomHeight] = useState("");
   const [customLength, setCustomLength] = useState("");
-  const priceRezinka = 250;
 
   // Підковдра: опції з цінами
   const pidkovdraOptions = [
@@ -40,9 +48,9 @@ export default function AdditionalProducts() {
   const [qtyProstyradlo, setQtyProstyradlo] = useState(1);
 
   // Хелпери для валідації кастомної резинки
-  const maxWidth = 180;
-  const maxHeight = 200;
-  const maxLength = 20;
+  const maxWidth = 220;
+  const maxHeight = 240;
+  const maxLength = 30;
   const isCustomValid = () => {
     const w = Number(customWidth);
     const h = Number(customHeight);
@@ -54,9 +62,20 @@ export default function AdditionalProducts() {
   };
 
   const handleAddRezinka = () => {
+    let chosenSize = selectedStdSize;
+    let rezPrice = 450; // Default price for custom sizes
+    
     const chosenSize = customWidth && customHeight && customLength && isCustomValid()
       ? `${customWidth}×${customHeight}×${customLength}`
       : selectedStdSize;
+    
+    if (customWidth && customHeight && customLength && isCustomValid()) {
+      rezPrice = 450; // Custom sizes are 450 грн
+    } else {
+      // Find price for standard size
+      const standardSize = standardSizes.find(s => s.size === selectedStdSize);
+      rezPrice = standardSize ? standardSize.price : 450;
+    }
     
     addItem({
       id: `rezinka-${chosenSize}`,
@@ -65,7 +84,7 @@ export default function AdditionalProducts() {
       chosenSet: chosenSize,
       chosenPillow: "",
       quantity: 1,
-      price: priceRezinka,
+      price: rezPrice,
     });
   };
 
@@ -169,21 +188,21 @@ export default function AdditionalProducts() {
         {activeTab === "rezinka" && (
           <div id="rezinka" className="max-w-2xl mx-auto bg-white bg-opacity-90 p-8 rounded-2xl shadow-2xl">
             <h3 className="text-2xl font-semibold text-brandBrown mb-6 text-center">
-              Резинка — {priceRezinka} грн
+              Простирадло на резинці
             </h3>
             
             <div className="mb-6">
               <label className="block mb-3 text-graphite font-medium">
-                Виберіть стандартний розмір:
+                Оберіть розмір:
               </label>
               <select
                 value={selectedStdSize}
                 onChange={e => setSelectedStdSize(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors"
               >
-                {standardSizes.map(size => (
-                  <option key={size} value={size}>
-                    {size}
+                {standardSizes.map(item => (
+                  <option key={item.size} value={item.size}>
+                    {item.size} — {item.price} грн
                   </option>
                 ))}
               </select>
@@ -191,7 +210,7 @@ export default function AdditionalProducts() {
 
             <div className="mb-6">
               <p className="text-graphite font-medium mb-3">
-                Або введіть власні параметри (max {maxWidth}×{maxHeight}×{maxLength}):
+                Або введіть власні розміри (450 грн, максимальні: {maxWidth}×{maxHeight}×{maxLength}):
               </p>
               <div className="grid grid-cols-3 gap-4">
                 <input
