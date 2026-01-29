@@ -109,31 +109,34 @@ export default function ProductCard({ item }: ProductCardProps) {
   };
 
   const handleAddToCart = () => {
-    // Get selected set option and its price
     const selectedSet = item.setOptions.find(opt => opt.label === selectedSetOption)!;
-    let finalPrice = selectedSet.price || 0;
-    let setDescription = selectedSet.label;
+    const basePrice = selectedSet.price || 0;
+    let finalPrice = basePrice;
+    let setDescription;
     
-    // If rezinka is selected, calculate the additional cost and update description
     if (includeRezinka) {
-      let rezPrice = 450; // Default price for custom sizes
+      // Замінюємо звичайне простирадло на резинку
+      let rezinkaPrice = 450; // Default price for custom sizes
+      let rezinkaSize;
       
       if (customRezWidth && customRezLength && customRezHeight && isCustomRezValid()) {
-        const customSize = `${customRezWidth}×${customRezLength}×${customRezHeight}`;
-        rezPrice = 450; // Custom sizes are 450 грн
-        setDescription = `${selectedSet.label} + Простирадло на резинці (${customSize})`;
+        rezinkaSize = `${customRezWidth}×${customRezLength}×${customRezHeight}`;
+        rezinkaPrice = 450;
       } else {
-        // Find price for standard size
         const standardSize = standardRezinkaSizes.find(s => s.size === selectedRezinkaSize);
-        rezPrice = standardSize ? standardSize.price : 450;
-        setDescription = `${selectedSet.label} + Простирадло на резинці (${selectedRezinkaSize})`;
+        rezinkaPrice = standardSize ? standardSize.price : 450;
+        rezinkaSize = selectedRezinkaSize;
       }
       
-      // Add rezinka price to the total set price
-      finalPrice += rezPrice;
+      // Замінюємо опис простирадла в комплекті
+      setDescription = selectedSet.label.replace('простирадло)', `простирадло на резинці ${rezinkaSize})`);
+      finalPrice = basePrice + rezinkaPrice;
+    } else {
+      // Звичайний комплект без змін
+      setDescription = selectedSet.label;
+      finalPrice = basePrice;
     }
 
-    // Add the complete bedding set (with or without rezinka)
     addItem({
       id: item.id,
       title: item.title,
