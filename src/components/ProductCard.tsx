@@ -109,42 +109,40 @@ export default function ProductCard({ item }: ProductCardProps) {
   };
 
   const handleAddToCart = () => {
-    // 1) Add bedding set
+    // Get selected set option and its price
     const selectedSet = item.setOptions.find(opt => opt.label === selectedSetOption)!;
-    addItem({
-      id: item.id,
-      title: item.title,
-      imageUrl: images[currentImageIndex],
-      chosenSet: selectedSet.label,
-      chosenPillow: selectedPillowOption,
-      quantity,
-      price: selectedSet.price || 0,
-    });
-
-    // 2) If rezinka checkbox is checked, add the fitted-sheet
+    let finalPrice = selectedSet.price || 0;
+    let setDescription = selectedSet.label;
+    
+    // If rezinka is selected, calculate the additional cost and update description
     if (includeRezinka) {
-      let rezSize = selectedRezinkaSize;
       let rezPrice = 450; // Default price for custom sizes
       
       if (customRezWidth && customRezLength && customRezHeight && isCustomRezValid()) {
-        rezSize = `${customRezWidth}×${customRezLength}×${customRezHeight}`;
+        const customSize = `${customRezWidth}×${customRezLength}×${customRezHeight}`;
         rezPrice = 450; // Custom sizes are 450 грн
+        setDescription = `${selectedSet.label} + Простирадло на резинці (${customSize})`;
       } else {
         // Find price for standard size
         const standardSize = standardRezinkaSizes.find(s => s.size === selectedRezinkaSize);
         rezPrice = standardSize ? standardSize.price : 450;
+        setDescription = `${selectedSet.label} + Простирадло на резинці (${selectedRezinkaSize})`;
       }
       
-      addItem({
-        id: "rezinka",
-        title: `Простирадло на резинці (${rezSize})`,
-        imageUrl: "https://res.cloudinary.com/miva-textil/image/upload/v1735689600/additional/rezinka.jpg",
-        chosenSet: rezSize,
-        chosenPillow: "",
-        quantity: 1,
-        price: rezPrice,
-      });
+      // Add rezinka price to the total set price
+      finalPrice += rezPrice;
     }
+
+    // Add the complete bedding set (with or without rezinka)
+    addItem({
+      id: item.id,
+      title: item.title,
+      imageUrl: images[currentImageIndex],
+      chosenSet: setDescription,
+      chosenPillow: selectedPillowOption,
+      quantity,
+      price: finalPrice,
+    });
   };
 
   const handleColorCombination = () => {
