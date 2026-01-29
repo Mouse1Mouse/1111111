@@ -39,7 +39,7 @@ export default function ProductCard({ item }: ProductCardProps) {
     { size: "160×200×30", price: 450 },
     { size: "180×200×20", price: 450 },
     { size: "180×200×30", price: 450 },
-    { size: "200×220×20", price: 450 }
+    { size: "200×200×20", price: 450 }
   ];
   const [selectedRezinkaSize, setSelectedRezinkaSize] = useState(standardRezinkaSizes[0].size);
   const [customRezWidth, setCustomRezWidth] = useState("");

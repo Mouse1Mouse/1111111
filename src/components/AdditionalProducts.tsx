@@ -14,7 +14,7 @@ export default function AdditionalProducts() {
     { size: "160×200×30", price: 450 },
     { size: "180×200×20", price: 450 },
     { size: "180×200×30", price: 450 },
-    { size: "200×220×20", price: 450 }
+    { size: "200×200×20", price: 450 }
   ];
   const [selectedStdSize, setSelectedStdSize] = useState(standardSizes[0].size);
   const [customWidth, setCustomWidth] = useState("");
