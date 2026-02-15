@@ -35,10 +35,10 @@ export default function Contact() {
           <div>
             <p className="text-graphite mb-2 font-medium">Зателефонуйте нам:</p>
             <a 
-              href="tel:+380123456789" 
+              href="tel:+380969797002" 
               className="text-brandBrown hover:text-gold transition-colors duration-200 text-lg"
             >
-              +38 (012) 345-67-89
+              +38 (096) 979-70-02
             </a>
           </div>
         </div>
