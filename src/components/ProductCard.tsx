@@ -128,8 +128,9 @@ export default function ProductCard({ item }: ProductCardProps) {
         rezinkaSize = selectedRezinkaSize;
       }
       
-      // Замінюємо опис простирадла в комплекті
-      setDescription = selectedSet.label.replace('простирадло)', `простирадло на резинці ${rezinkaSize})`);
+      // Повністю замінюємо опис простирадла в комплекті
+      // Знаходимо частину з простирадлом і замінюємо її повністю
+      setDescription = selectedSet.label.replace(/\d+×\d+\s+простирадло/, `простирадло на резинці ${rezinkaSize}`);
       finalPrice = basePrice + rezinkaPrice;
     } else {
       // Звичайний комплект без змін
