@@ -141,7 +141,7 @@ export default function ProductCard({ item }: ProductCardProps) {
       id: item.id,
       title: item.title,
       imageUrl: images[currentImageIndex],
-      chosenSet: setDescription,
+      chosenSet: includeRezinka ? setDescription : selectedSet.label,
       chosenPillow: selectedPillowOption,
       quantity,
       price: finalPrice,
