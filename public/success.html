@@ -202,26 +202,25 @@
           return;
         }
 
-        // Generate unique order ID
-        const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Get customer data from localStorage if available
-        const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
-        
-        console.log('Creating Monobank invoice with:', {
-          amount: totalSum,
-          orderId: newOrderId,
-          customerName: orderData.fullName,
-          customerEmail: orderData.contact
-        });
-
         try {
-          // Збираємо детальну інформацію про замовлення з localStorage
+          // Generate unique order ID
+          const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Get customer data from localStorage if available
           const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
+          
+          console.log('Creating Monobank invoice with:', {
+            amount: totalSum,
+            orderId: newOrderId,
+            customerName: orderData.fullName,
+            customerEmail: orderData.contact
+          });
+
+          // Збираємо детальну інформацію про замовлення з localStorage
           const detailedOrderSummary = orderData.orderSummary || 'Деталі замовлення недоступні';
 
           // Show loading state
-          const button = event.target;
+          const button = event.target.closest('button');
           const originalText = button.innerHTML;
           button.innerHTML = `
             <div class="flex items-center justify-center">
@@ -235,7 +234,7 @@
           button.disabled = true;
 
           // Call Netlify Function to create invoice
-          const response = await fetch('/.netlify/functions/create-invoice', {
+          const response = await fetch(`${window.location.origin}/.netlify/functions/create-invoice`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -249,6 +248,15 @@
             })
           });
 
+          console.log('Response status:', response.status);
+          console.log('Response headers:', response.headers);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('HTTP Error:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
           const data = await response.json();
           console.log('Invoice creation response:', data);
 
@@ -258,7 +266,7 @@
             
             // Відправляємо Telegram сповіщення для онлайн оплати
             try {
-              await fetch('/.netlify/functions/telegram-notify', {
+              await fetch(`${window.location.origin}/.netlify/functions/telegram-notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -280,17 +288,36 @@
             
             window.location.href = data.invoiceUrl;
           } else {
-            throw new Error(data.error || 'Помилка створення рахунку');
+            console.error('Invoice creation failed:', data);
+            throw new Error(data.error || data.message || 'Помилка створення рахунку');
           }
 
         } catch (error) {
           console.error('Payment error:', error);
           
           // Restore button state
-          button.innerHTML = originalText;
-          button.disabled = false;
+          const button = event.target.closest('button');
+          if (button) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+          }
           
-          alert(`Помилка при створенні рахунку: ${error.message}. Будь ласка, спробуйте ще раз або оберіть банківський переказ.`);
+          // Show user-friendly error message
+          let errorMessage = 'Помилка при створенні рахунку. ';
+          
+          if (error.message.includes('Failed to fetch')) {
+            errorMessage += 'Перевірте підключення до інтернету.';
+          } else if (error.message.includes('HTTP 500')) {
+            errorMessage += 'Тимчасова помилка сервера.';
+          } else if (error.message.includes('HTTP 404')) {
+            errorMessage += 'Сервіс оплати тимчасово недоступний.';
+          } else {
+            errorMessage += error.message;
+          }
+          
+          errorMessage += ' Будь ласка, спробуйте ще раз або оберіть банківський переказ.';
+          
+          alert(errorMessage);
         }
       }
 
