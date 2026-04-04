@@ -207,6 +207,10 @@
           return;
         }
 
+        // Email validation function
+        const isValidEmail = (email) => {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        };
         try {
           // Generate unique order ID
           const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -214,11 +218,14 @@
           // Get customer data from localStorage if available
           const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
           
+          // Validate and sanitize email
+          const safeEmail = isValidEmail(orderData.contact) ? orderData.contact : "noemail@gmail.com";
+          
           console.log('Creating Monobank invoice with:', {
             amount: totalSum,
             orderId: newOrderId,
             customerName: orderData.fullName,
-            customerEmail: orderData.contact
+            customerEmail: safeEmail
           });
 
           // Збираємо детальну інформацію про замовлення з localStorage
@@ -226,7 +233,7 @@
 
           // Show loading state
           const button = event && event.target ? event.target.closest('button') : document.querySelector('button[onclick="payMonobank()"]');
-          const originalText = button.innerHTML;
+          const originalText = button ? button.innerHTML : '';
           button.innerHTML = `
             <div class="flex items-center justify-center">
               <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -236,7 +243,7 @@
               Створення рахунку...
             </div>
           `;
-          button.disabled = true;
+          if (button) button.disabled = true;
 
           console.log('📤 Відправляємо запит на створення інвойсу...');
 
@@ -250,7 +257,7 @@
               amount: parseInt(totalSum),
               orderId: newOrderId,
               customerName: orderData.fullName || 'Клієнт MIVA', 
-              customerEmail: orderData.contact || '',
+              customerEmail: safeEmail,
               orderDetails: detailedOrderSummary
             })
           });
@@ -283,7 +290,7 @@
                 body: JSON.stringify({
                   fullName: orderData.fullName || 'Клієнт MIVA',
                   phone: orderData.phone || 'Не вказано',
-                  contact: orderData.contact || 'Не вказано',
+                  contact: safeEmail,
                   city: orderData.city || 'Не вказано',
                   branch: orderData.branch || 'Не вказано',
                   orderSummary: detailedOrderSummary,
@@ -317,12 +324,12 @@
           // Restore button state
           const button = event && event.target ? event.target.closest('button') : document.querySelector('button[onclick="payMonobank()"]');
           if (button) {
-            button.innerHTML = originalText;
+            button.innerHTML = originalText || button.innerHTML;
             button.disabled = false;
           }
           
           // Show user-friendly error message
-          let errorMessage = 'Помилка при створенні рахунку. ';
+          let errorMessage = 'Невірний email або помилка оплати. ';
           
           if (error.message.includes('Failed to fetch')) {
             errorMessage += 'Перевірте підключення до інтернету.';
@@ -330,6 +337,8 @@
             errorMessage += 'Тимчасова помилка сервера.';
           } else if (error.message.includes('HTTP 404')) {
             errorMessage += 'Сервіс оплати тимчасово недоступний.';
+          } else if (error.message.includes('400')) {
+            errorMessage += 'Некоректні дані замовлення.';
           } else {
             errorMessage += error.message;
           }
