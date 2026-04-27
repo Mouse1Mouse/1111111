@@ -477,6 +477,27 @@ export default function Gallery() {
         { label: "50×70 (прямокутні)" },
         { label: "70×70 (квадратні)" }
       ]
+    },
+    { 
+      id: "27",
+      title: "Жовтий комплект",
+      imageUrl: "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_2_2026-04-28_00-26-50_qlsrs5.jpg",
+      images: [
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_2_2026-04-28_00-26-50_qlsrs5.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_1_2026-04-28_00-26-50_brb1yy.jpg",
+        "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_5_2026-04-28_00-26-50_w3ys3b.jpg"
+      ],
+      setOptions: [
+        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
+        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
+        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
+        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
+        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
+      ],
+      pillowOptions: [
+        { label: "50×70 (прямокутні)" },
+        { label: "70×70 (квадратні)" }
+      ]
     }
   ];
 
