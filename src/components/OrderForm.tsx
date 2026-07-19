@@ -1,5 +1,5 @@
 // src/components/OrderForm.tsx
-import React, { useContext, useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useCart } from "../context/CartContext";
 
 interface OrderFormProps {
@@ -11,6 +11,11 @@ function encode(data: Record<string, string>) {
   return Object.keys(data)
     .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(data[key]))
     .join("&");
+}
+
+function createOrderId() {
+  const randomPart = crypto.randomUUID().replaceAll('-', '').slice(0, 10);
+  return `MIVA-${Date.now()}-${randomPart}`;
 }
 
 export default function OrderForm({ onBack }: OrderFormProps) {
@@ -26,8 +31,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
   // Nova Poshta integration with debounce
   const [cityQuery, setCityQuery] = useState("");
-  const [cities, setCities] = useState<{ Ref: string; Description: string }[]>([]);
-  const [filteredCities, setFilteredCities] = useState<typeof cities>([]);
+  const [filteredCities, setFilteredCities] = useState<{ Ref: string; Description: string }[]>([]);
   const [selectedCityRef, setSelectedCityRef] = useState("");
   const [selectedCityName, setSelectedCityName] = useState("");
   const [isLoadingCities, setIsLoadingCities] = useState(false);
@@ -213,16 +217,29 @@ export default function OrderForm({ onBack }: OrderFormProps) {
     setIsSubmitting(true);
     
     try {
+      const orderId = createOrderId();
+      const orderItems = items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        chosenSet: item.chosenSet,
+        chosenPillow: item.chosenPillow,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
       // Save data to localStorage for success page
       localStorage.setItem('totalSum', totalSum.toString());
       localStorage.setItem('orderData', JSON.stringify({
+        orderId,
         fullName,
         phone,
         contact,
         city: selectedCityName, // Use selected city name
         branch: selectedBranchName,
         orderSummary,
-        totalSum
+        totalSum,
+        comments,
+        items: orderItems
       }));
 
       // Prepare form data for Netlify
@@ -277,7 +294,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             orderSummary: detailedOrderSummary,
             totalSum: totalSum.toString(),
             comments,
-            paymentMethod: 'Офлайн замовлення (буде уточнено)'
+            paymentMethod: 'Спосіб оплати ще не обрано',
+            orderId
           })
         });
         console.log('Telegram notification sent');

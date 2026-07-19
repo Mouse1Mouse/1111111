@@ -1,89 +1,78 @@
-const TELEGRAM_BOT_TOKEN = '8073830189:AAH4P8m1im6RTSIXpG859e9bQBGetjcvdmY';
-const CHAT_IDS = ['923730033', '761026351', '432380172']; // Додайте більше chat_id за потреби
+const MAX_TELEGRAM_MESSAGE_LENGTH = 4096;
 
-exports.handler = async (event, context) => {
-  // Дозволяємо тільки POST запити
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
+function getAllowedOrigin(event) {
+  const origin = event.headers?.origin || '';
+  const configuredSite = process.env.URL || 'https://miva.com.ua';
+  const allowed = new Set([
+    configuredSite,
+    'https://miva.com.ua',
+    'https://www.miva.com.ua',
+    'http://localhost:5173'
+  ]);
 
-  // Обробляємо CORS preflight запити
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: ''
-    };
-  }
+  return allowed.has(origin) ? origin : configuredSite;
+}
+
+function response(event, statusCode, body) {
+  return {
+    statusCode,
+    headers: {
+      'Access-Control-Allow-Origin': getAllowedOrigin(event),
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    },
+    body: JSON.stringify(body)
+  };
+}
+
+function parseChatIds(value) {
+  if (!value) return [];
 
   try {
-    // Логуємо сирі дані що прийшли
-    console.log('🔍 Сирі дані event.body:', event.body);
-    console.log('🔍 Тип event.body:', typeof event.body);
-
-    // Парсимо дані
-    let orderData;
-    try {
-      orderData = JSON.parse(event.body);
-      console.log('✅ Успішно розпарсили JSON:', orderData);
-    } catch (parseError) {
-      console.error('❌ Помилка парсингу JSON:', parseError.message);
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ 
-          success: false,
-          error: 'Некоректний JSON',
-          details: parseError.message
-        })
-      };
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.map(String).map((item) => item.trim()).filter(Boolean);
     }
+  } catch {
+    // A comma-separated value is supported as a simpler Netlify setting.
+  }
 
-    // Витягуємо дані з безпечними значеннями за замовчуванням
-    const { 
-      fullName = 'Не вказано', 
-      phone = 'Не вказано', 
-      contact = 'Не вказано', 
-      city = 'Не вказано', 
-      branch = 'Не вказано', 
-      orderSummary = 'Деталі замовлення відсутні', 
-      totalSum = '0', 
-      comments = '', 
-      paymentMethod = 'Не вказано',
-      orderId = null
-    } = orderData;
+  return value.split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+}
 
-    // Логуємо отримані дані
-    console.log('📋 Отримані дані замовлення:', {
-      fullName,
-      phone,
-      contact,
-      city,
-      branch,
-      orderSummary: orderSummary.substring(0, 100) + '...', // Скорочена версія для логу
-      totalSum,
-      comments,
-      paymentMethod,
-      orderId
-    });
+function safeText(value, fallback = '', maxLength = 500) {
+  const text = String(value ?? '').trim();
+  return (text || fallback).slice(0, maxLength);
+}
 
-    // Формуємо красиве повідомлення з емодзі
-    const message = `🔔 <b>НОВЕ ЗАМОВЛЕННЯ MIVA!</b>
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function buildMessage(order) {
+  const fullName = escapeHtml(safeText(order.fullName, 'Не вказано', 120));
+  const phone = escapeHtml(safeText(order.phone, 'Не вказано', 40));
+  const contact = escapeHtml(safeText(order.contact, 'Не вказано', 160));
+  const city = escapeHtml(safeText(order.city, 'Не вказано', 120));
+  const branch = escapeHtml(safeText(order.branch, 'Не вказано', 180));
+  const orderSummary = escapeHtml(safeText(order.orderSummary, 'Деталі замовлення відсутні', 1800));
+  const comments = escapeHtml(safeText(order.comments, '', 600));
+  const paymentMethod = escapeHtml(safeText(order.paymentMethod, 'Не вказано', 120));
+  const orderId = escapeHtml(safeText(order.orderId, '', 80));
+  const total = Number(order.totalSum);
+
+  if (!Number.isFinite(total) || total <= 0) {
+    throw new Error('Invalid order total');
+  }
+
+  const message = `🔔 <b>НОВЕ ЗАМОВЛЕННЯ MIVA!</b>
 
 👤 <b>Клієнт:</b> ${fullName}
 📞 <b>Телефон:</b> ${phone}
@@ -96,134 +85,64 @@ exports.handler = async (event, context) => {
 🛏️ <b>Замовлення:</b>
 ${orderSummary}
 
-💰 <b>Загальна сума:</b> ${totalSum} грн
+💰 <b>Загальна сума:</b> ${total.toFixed(2)} грн
 💳 <b>Спосіб оплати:</b> ${paymentMethod}
-${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}${comments ? `💬 <b>Коментар клієнта:</b>\n${comments}\n\n` : ''}⚠️ <b>ВАЖЛИВО:</b> Зв'яжіться з клієнтом протягом 2 годин!
+${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}${comments ? `💬 <b>Коментар:</b> ${comments}\n` : ''}
+⏰ <b>Час:</b> ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })}`;
 
-⏰ <b>Час:</b> ${new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}`;
+  return message.slice(0, MAX_TELEGRAM_MESSAGE_LENGTH);
+}
 
-    // Логуємо повідомлення перед відправкою
-    console.log('📤 Повідомлення перед відправкою:', message);
+export const handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return response(event, 200, { ok: true });
+  }
 
-    // Перевіряємо чи повідомлення не порожнє та не містить undefined
-    if (!message || message.includes('undefined') || message.trim() === '') {
-      console.error('⚠️ Порожнє або некоректне повідомлення!');
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ 
-          success: false,
-          error: 'Порожнє або некоректне повідомлення'
-        })
-      };
+  if (event.httpMethod !== 'POST') {
+    return response(event, 405, { error: 'Method not allowed' });
+  }
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatIds = parseChatIds(process.env.TELEGRAM_CHAT_IDS);
+
+  if (!botToken || chatIds.length === 0) {
+    console.error('Telegram environment variables are not configured');
+    return response(event, 500, { error: 'Telegram integration is not configured' });
+  }
+
+  try {
+    const order = JSON.parse(event.body || '{}');
+    const message = buildMessage(order);
+
+    const results = await Promise.all(chatIds.map(async (chatId) => {
+      const telegramResponse = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' })
+        }
+      );
+
+      if (!telegramResponse.ok) {
+        const errorBody = await telegramResponse.json().catch(() => ({}));
+        return { success: false, status: telegramResponse.status, error: errorBody.description };
+      }
+
+      return { success: true };
+    }));
+
+    const sent = results.filter((item) => item.success).length;
+    const failed = results.length - sent;
+
+    if (sent === 0) {
+      console.error('Telegram delivery failed for all configured chats');
+      return response(event, 502, { error: 'Telegram delivery failed', sent, failed });
     }
 
-    // Функція для відправки повідомлення в Telegram
-    const sendTelegramMessage = async (message) => {
-      const sendPromises = CHAT_IDS.map(async (chatId) => {
-        try {
-          console.log(`📤 Відправляємо повідомлення до chat_id ${chatId}...`);
-          
-          const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: message,
-              parse_mode: 'HTML'
-            })
-          });
-
-          const result = await response.json();
-          
-          // Логуємо результат запиту
-          console.log(`📊 Відповідь для chat_id ${chatId}:`, {
-            status: response.status,
-            ok: response.ok,
-            data: result
-          });
-          
-          if (!response.ok) {
-            console.error(`❌ Помилка відправки до chat_id ${chatId}:`, {
-              status: response.status,
-              error: result.description || result.error_code,
-              fullResponse: result
-            });
-            return { chatId, success: false, error: result.description || 'Unknown error' };
-          }
-
-          console.log(`✅ Повідомлення успішно відправлено до chat_id ${chatId}`);
-          return { chatId, success: true, messageId: result.result?.message_id };
-          
-        } catch (error) {
-          console.error(`❌ Виняток при відправці до chat_id ${chatId}:`, {
-            error: error.message,
-            stack: error.stack
-          });
-          return { chatId, success: false, error: error.message };
-        }
-      });
-
-      return await Promise.all(sendPromises);
-    };
-
-    // Відправляємо повідомлення
-    const results = await sendTelegramMessage(message);
-    
-    // Підраховуємо результати
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
-
-    console.log(`📊 Підсумок Telegram сповіщень: ${successful} успішних, ${failed} невдалих`);
-    
-    // Логуємо детальні результати
-    results.forEach(result => {
-      if (result.success) {
-        console.log(`✅ Chat ID ${result.chatId}: успішно (message_id: ${result.messageId || 'N/A'})`);
-      } else {
-        console.error(`❌ Chat ID ${result.chatId}: помилка - ${result.error}`);
-      }
-    });
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
-      body: JSON.stringify({
-        status: "ok",
-        success: true,
-        message: `Повідомлення відправлено: ${successful} успішних, ${failed} невдалих`,
-        results: results,
-        totalSent: successful,
-        totalFailed: failed
-      })
-    };
-
+    return response(event, 200, { success: true, sent, failed });
   } catch (error) {
-    console.error('❌ Критична помилка обробки Telegram сповіщення:', {
-      error: error.message,
-      stack: error.stack,
-      body: event.body
-    });
-    
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
-      body: JSON.stringify({ 
-        success: false,
-        error: 'Внутрішня помилка сервера',
-        details: error.message
-      })
-    };
+    console.error('Telegram notification failed:', error.message);
+    return response(event, 400, { error: 'Invalid order data' });
   }
 };

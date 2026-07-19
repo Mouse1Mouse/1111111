@@ -1,189 +1,129 @@
-const MONOBANK_TOKEN = 'm3oUJLiHdP4rMFyI8zUyfPw';
+function getSiteUrl() {
+  return (process.env.URL || 'https://miva.com.ua').replace(/\/$/, '');
+}
 
-exports.handler = async (event, context) => {
-  console.log('=== CREATE INVOICE FUNCTION START ===');
-  console.log('HTTP Method:', event.httpMethod);
-  console.log('Headers:', JSON.stringify(event.headers, null, 2));
-  console.log('Body:', event.body);
+function response(statusCode, body) {
+  return {
+    statusCode,
+    headers: {
+      'Access-Control-Allow-Origin': getSiteUrl(),
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    },
+    body: JSON.stringify(body)
+  };
+}
 
-  // Дозволяємо тільки POST запити
-  if (event.httpMethod !== 'POST') {
-    console.log('Method not allowed:', event.httpMethod);
-    return {
-      statusCode: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+function normalizeOrderId(value) {
+  const orderId = String(value || '').trim();
+  return /^MIVA-[A-Za-z0-9-]{8,70}$/.test(orderId) ? orderId : null;
+}
+
+function normalizeItems(items) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+    throw new Error('Order items are required');
   }
 
-  // Обробляємо CORS preflight запити
-  if (event.httpMethod === 'OPTIONS') {
-    console.log('CORS preflight request');
+  return items.map((item, index) => {
+    const nameParts = [item.title, item.chosenSet, item.chosenPillow].filter(Boolean);
+    const name = nameParts.join(' — ').trim().slice(0, 120);
+    const qty = Number(item.quantity);
+    const unitPrice = Number(item.price);
+    const code = String(item.id || `item-${index + 1}`)
+      .replace(/[^A-Za-z0-9_-]/g, '-')
+      .slice(0, 64);
+
+    if (!name || !Number.isInteger(qty) || qty <= 0 || qty > 100) {
+      throw new Error('Invalid order item');
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      throw new Error('Invalid item price');
+    }
+
+    const sum = Math.round(unitPrice * 100);
     return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: ''
+      name,
+      qty,
+      sum,
+      total: sum * qty,
+      unit: 'шт.',
+      code,
+      tax: [0]
     };
+  });
+}
+
+export const handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return response(200, { ok: true });
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return response(405, { error: 'Method not allowed' });
+  }
+
+  const monobankToken = process.env.MONOBANK_TOKEN;
+  if (!monobankToken) {
+    console.error('MONOBANK_TOKEN is not configured');
+    return response(500, { error: 'Payment service is not configured' });
   }
 
   try {
-    let requestData;
-    try {
-      requestData = JSON.parse(event.body);
-      console.log('Parsed request data:', requestData);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+    const requestData = JSON.parse(event.body || '{}');
+    const orderId = normalizeOrderId(requestData.orderId);
+    const basketOrder = normalizeItems(requestData.items);
+    const amount = basketOrder.reduce((sum, item) => sum + item.total, 0);
+    const requestedAmount = Math.round(Number(requestData.amount) * 100);
+
+    if (!orderId || !Number.isFinite(requestedAmount) || requestedAmount !== amount) {
+      return response(400, { error: 'Order amount or ID is invalid' });
     }
 
-    const { amount, orderId, customerName, customerEmail } = requestData;
-
-    // Валідація вхідних даних
-    if (!amount || !orderId) {
-      console.error('Missing required parameters:', { amount, orderId });
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ error: 'Відсутні обов\'язкові параметри' })
-      };
-    }
-
-    if (!MONOBANK_TOKEN) {
-      console.error('MONOBANK_TOKEN не налаштований');
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ error: 'Сервер не налаштований для оплати' })
-      };
-    }
-
-    // Validate amount
-    const amountInt = parseInt(amount);
-    if (isNaN(amountInt) || amountInt <= 0) {
-      console.error('Invalid amount:', amount);
-      return {
-        statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ error: 'Некоректна сума' })
-      };
-    }
-
-    // Створюємо інвойс через API Monobank
+    const email = String(requestData.customerEmail || '').trim();
+    const customerEmails = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? [email] : [];
+    const siteUrl = getSiteUrl();
     const invoiceData = {
-      amount: amountInt * 100, // Сума в копійках
-      ccy: 980, // UAH
+      amount,
+      ccy: 980,
       merchantPaymInfo: {
         reference: orderId,
-        destination: 'Оплата замовлення MIVA',
+        destination: `Оплата замовлення MIVA ${orderId}`,
         comment: `Замовлення ${orderId}`,
-        customerEmails: customerEmail ? [customerEmail] : []
+        customerEmails,
+        basketOrder
       },
-      redirectUrl: `${event.headers.origin || event.headers.referer || 'https://miva.com.ua'}/success.html?payment=monopay&orderId=${orderId}&total=${amount}`,
-      webHookUrl: `${event.headers.origin || event.headers.referer || 'https://miva.com.ua'}/.netlify/functions/payment-webhook`
+      redirectUrl: `${siteUrl}/success.html?payment=monopay&orderId=${encodeURIComponent(orderId)}&total=${amount / 100}`,
+      webHookUrl: `${siteUrl}/.netlify/functions/payment-webhook`,
+      validity: 86400
     };
-
-    console.log('Створюємо інвойс:', invoiceData);
 
     const monoResponse = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
       method: 'POST',
       headers: {
-        'X-Token': MONOBANK_TOKEN,
+        'X-Token': monobankToken,
+        'X-Cms': 'MIVA Netlify',
+        'X-Cms-Version': '1.0',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(invoiceData)
     });
 
-    console.log('Monobank response status:', monoResponse.status);
-    console.log('Monobank response headers:', monoResponse.headers);
-
-    const responseData = await monoResponse.json();
-    console.log('Відповідь від Monobank:', responseData);
-
-    if (!monoResponse.ok) {
-      console.error('Помилка API Monobank:', responseData);
-      return {
-        statusCode: monoResponse.status,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ 
-          error: 'Помилка створення інвойсу',
-          details: responseData,
-          status: monoResponse.status
-        })
-      };
+    const responseData = await monoResponse.json().catch(() => ({}));
+    if (!monoResponse.ok || !responseData.pageUrl || !responseData.invoiceId) {
+      console.error('Monobank invoice creation failed:', monoResponse.status);
+      return response(502, { error: 'Unable to create payment invoice' });
     }
 
-    // Check if response has required fields
-    if (!responseData.pageUrl) {
-      console.error('Missing pageUrl in Monobank response:', responseData);
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({ 
-          error: 'Некоректна відповідь від платіжного сервісу',
-          details: responseData
-        })
-      };
-    }
-
-    // Повертаємо посилання на оплату
-    console.log('Invoice created successfully:', responseData.invoiceId);
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
-      body: JSON.stringify({
-        success: true,
-        invoiceUrl: responseData.pageUrl,
-        invoiceId: responseData.invoiceId
-      })
-    };
-
+    return response(200, {
+      success: true,
+      invoiceUrl: responseData.pageUrl,
+      invoiceId: responseData.invoiceId
+    });
   } catch (error) {
-    console.error('Помилка створення інвойсу:', error);
-    console.error('Error stack:', error.stack);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
-      body: JSON.stringify({ 
-        error: 'Внутрішня помилка сервера',
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      })
-    };
+    console.error('Invoice request rejected:', error.message);
+    return response(400, { error: 'Invalid order data' });
   }
 };
