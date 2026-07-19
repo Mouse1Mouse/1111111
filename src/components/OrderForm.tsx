@@ -376,17 +376,18 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             />
           </label>
 
-          {/* Email або Viber */}
+          {/* Email для електронного чека */}
           <label className="block">
-            <span className="text-graphite font-medium mb-2 block">Email або Viber *</span>
+            <span className="text-graphite font-medium mb-2 block">Email для чека *</span>
             <input
-              type="text"
+              type="email"
               name="contact"
               value={contact}
               onChange={(e) => setContact(e.target.value)}
               required
               disabled={isSubmitting}
-              placeholder="email@example.com або номер Viber"
+              autoComplete="email"
+              placeholder="email@example.com"
               className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
             />
           </label>
