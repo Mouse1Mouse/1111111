@@ -212,14 +212,12 @@
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         };
         try {
-          // Generate unique order ID
-          const newOrderId = `MIVA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
           // Get customer data from localStorage if available
           const orderData = JSON.parse(localStorage.getItem('orderData') || '{}');
+          const newOrderId = orderData.orderId || `MIVA-${Date.now()}-${crypto.randomUUID().replaceAll('-', '').slice(0, 10)}`;
           
           // Validate and sanitize email
-          const safeEmail = isValidEmail(orderData.contact) ? orderData.contact : "noemail@gmail.com";
+          const safeEmail = isValidEmail(orderData.contact) ? orderData.contact : "";
           
           console.log('Creating Monobank invoice with:', {
             amount: totalSum,
@@ -258,7 +256,8 @@
               orderId: newOrderId,
               customerName: orderData.fullName || 'Клієнт MIVA', 
               customerEmail: safeEmail,
-              orderDetails: detailedOrderSummary
+              orderDetails: detailedOrderSummary,
+              items: orderData.items || []
             })
           });
 
@@ -280,30 +279,6 @@
           if (data.success && data.invoiceUrl) {
             console.log('✅ Інвойс створено успішно');
             console.log('🔗 URL для оплати:', data.invoiceUrl);
-            
-            // Відправляємо Telegram сповіщення для онлайн оплати
-            try {
-              console.log('📤 Відправляємо Telegram сповіщення...');
-              await fetch(`${window.location.origin}/.netlify/functions/telegram-notify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  fullName: orderData.fullName || 'Клієнт MIVA',
-                  phone: orderData.phone || 'Не вказано',
-                  contact: safeEmail,
-                  city: orderData.city || 'Не вказано',
-                  branch: orderData.branch || 'Не вказано',
-                  orderSummary: detailedOrderSummary,
-                  totalSum: totalSum.toString(),
-                  comments: orderData.comments || '',
-                  paymentMethod: 'Онлайн оплата (Monobank)'
-                })
-              });
-              console.log('✅ Telegram сповіщення відправлено');
-            } catch (telegramError) {
-              console.error('❌ Помилка Telegram сповіщення:', telegramError);
-              // Не блокуємо оплату через помилку Telegram
-            }
             
             // Використовуємо window.location.href для кращої сумісності з мобільними пристроями
             console.log('🚀 Перенаправляємо на сторінку оплати...');
