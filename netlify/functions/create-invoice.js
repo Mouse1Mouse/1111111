@@ -56,7 +56,7 @@ function normalizeItems(items) {
   });
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return response(200, { ok: true });
   }

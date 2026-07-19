@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 let cachedPublicKey = null;
 
@@ -43,7 +43,7 @@ async function verifySignature(body, signature, token) {
   return verifier.verify(publicKey, Buffer.from(signature, 'base64'));
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return response(405, { error: 'Method not allowed' });
   }

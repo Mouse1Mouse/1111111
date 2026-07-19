@@ -93,7 +93,7 @@ ${orderId ? `🆔 <b>ID замовлення:</b> ${orderId}\n` : ''}${comments 
   return message.slice(0, MAX_TELEGRAM_MESSAGE_LENGTH);
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return response(event, 200, { ok: true });
   }
