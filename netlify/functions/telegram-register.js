@@ -20,16 +20,40 @@ export const handler = async (event) => {
 
   try {
     const bot = telegramClient(token);
-    await bot.setWebhook(`${siteUrl}/.netlify/functions/telegram-webhook`, webhookSecret);
+    const webhookUrl = `${siteUrl}/.netlify/functions/telegram-webhook`;
+    await bot.setWebhook(webhookUrl, webhookSecret);
+    const operatorIds = parseChatIds(process.env.TELEGRAM_OPERATOR_CHAT_IDS || process.env.TELEGRAM_CHAT_IDS);
+    let selfTestStatus = null;
+
+    if (operatorIds.length) {
+      const testResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-bot-api-secret-token': webhookSecret
+        },
+        body: JSON.stringify({
+          update_id: `self-test-${process.env.COMMIT_REF || 'v1'}`,
+          message: {
+            message_id: 0,
+            date: Math.floor(Date.now() / 1000),
+            chat: { id: operatorIds[0], type: 'private' },
+            text: '/help'
+          }
+        })
+      });
+      selfTestStatus = testResponse.status;
+    }
+
     const info = await bot.getWebhookInfo();
-    const operatorCount = parseChatIds(process.env.TELEGRAM_OPERATOR_CHAT_IDS || process.env.TELEGRAM_CHAT_IDS).length;
     return response(200, {
       ok: true,
       webhook: info.url,
       pendingUpdates: info.pending_update_count || 0,
       lastErrorAt: info.last_error_date || null,
       lastError: info.last_error_message || null,
-      operatorCount
+      operatorCount: operatorIds.length,
+      selfTestStatus
     });
   } catch {
     return response(502, { ok: false, error: 'Telegram registration failed' });
