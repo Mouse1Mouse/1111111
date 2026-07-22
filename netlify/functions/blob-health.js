@@ -19,7 +19,7 @@ export const handler = async (event) => {
     connectLambda(event);
     const store = getStore('miva-instagram-orders');
     await store.set('health/current', 'ok');
-    const value = await store.get('health/current', { consistency: 'strong' });
+    const value = await store.get('health/current');
     return response(200, { ok: value === 'ok' });
   } catch (error) {
     return response(500, {
