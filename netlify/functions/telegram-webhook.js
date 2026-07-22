@@ -88,14 +88,19 @@ const INPUT_SESSION_MODES = new Set([
   'await_receipt'
 ]);
 
-async function getSessionForInput(chatId) {
+async function getSessionForModes(chatId, expectedModes) {
+  const modes = new Set(expectedModes);
   let session = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     session = await getSession(chatId);
-    if (session && INPUT_SESSION_MODES.has(session.mode)) return session;
+    if (session && modes.has(session.mode)) return session;
     if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 250));
   }
   return session;
+}
+
+async function getSessionForInput(chatId) {
+  return getSessionForModes(chatId, INPUT_SESSION_MODES);
 }
 
 function orderButtons(order) {
@@ -665,8 +670,8 @@ async function handleCallback(bot, callback) {
 
   if (action === 'np_weight') {
     const choice = callbackParts[1];
-    const session = await getSession(chatId);
-    if (!['confirm_nova_poshta_ttn', 'await_np_weight', 'await_np_dimensions'].includes(session?.mode) || session.orderId !== id) {
+    const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
+    if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id) {
       await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна. Відкрийте замовлення ще раз.');
       return;
     }
@@ -692,8 +697,8 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'np_dims') {
-    const session = await getSession(chatId);
-    if (!['confirm_nova_poshta_ttn', 'await_np_weight', 'await_np_dimensions'].includes(session?.mode) || session.orderId !== id) {
+    const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
+    if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id) {
       await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна.');
       return;
     }
@@ -706,7 +711,7 @@ async function handleCallback(bot, callback) {
 
   if (action === 'np_payer') {
     const payer = callbackParts[1];
-    const session = await getSession(chatId);
+    const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
     if (!['Sender', 'Recipient'].includes(payer) || session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id) {
       await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна.');
       return;
@@ -729,8 +734,8 @@ async function handleCallback(bot, callback) {
 
   if (action === 'ai_prepay') {
     const choice = callbackParts[1];
-    const session = await getSession(chatId);
-    if (!['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+    const session = await getSessionForModes(chatId, ['confirm_ai_order']);
+    if (session?.mode !== 'confirm_ai_order' || session.draft?.id !== id) {
       await bot.sendMessage(chatId, 'Цей скрін уже неактуальний. Надішліть його ще раз.');
       return;
     }
@@ -775,8 +780,8 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'ai_edit') {
-    const session = await getSession(chatId);
-    if (!['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+    const session = await getSessionForModes(chatId, ['confirm_ai_order']);
+    if (session?.mode !== 'confirm_ai_order' || session.draft?.id !== id) {
       await bot.sendMessage(chatId, 'Цей скрін уже неактуальний. Надішліть його ще раз.');
       return;
     }
@@ -795,8 +800,8 @@ async function handleCallback(bot, callback) {
   if (action === 'ai_field') {
     const fieldCode = callbackParts[1];
     const field = AI_EDIT_FIELDS[fieldCode];
-    const session = await getSession(chatId);
-    if (!field || !['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+    const session = await getSessionForModes(chatId, ['confirm_ai_order']);
+    if (!field || session?.mode !== 'confirm_ai_order' || session.draft?.id !== id) {
       await bot.sendMessage(chatId, 'Ця дія вже неактуальна.');
       return;
     }
@@ -812,7 +817,7 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'ai_save') {
-    const session = await getSession(chatId);
+    const session = await getSessionForModes(chatId, ['confirm_ai_order']);
     if (session?.mode !== 'confirm_ai_order' || session.draft?.id !== id) {
       await bot.sendMessage(chatId, 'Це підтвердження вже неактуальне. Перевірте активні замовлення.');
       return;
@@ -832,7 +837,7 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'save') {
-    const session = await getSession(chatId);
+    const session = await getSessionForModes(chatId, ['confirm_new_order']);
     if (session?.mode !== 'confirm_new_order' || session.draft?.id !== id) {
       await bot.sendMessage(chatId, 'Це підтвердження вже неактуальне. Перевірте /orders.');
       return;
@@ -878,7 +883,7 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'np_create') {
-    const session = await getSession(chatId);
+    const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
     if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id || !session.shipment?.weight) {
       await bot.sendMessage(chatId, 'Підготовка ТТН уже неактуальна або не вибрана вага. Почніть ще раз із картки замовлення.');
       return;
