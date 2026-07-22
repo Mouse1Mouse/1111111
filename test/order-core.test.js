@@ -13,6 +13,7 @@ import {
   parseAmount
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
+import { normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
 
@@ -84,4 +85,52 @@ test('derives a stable Telegram webhook secret without exposing the token', () =
   assert.match(secret, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(secret, deriveWebhookSecret(token));
   assert.equal(secret.includes(token), false);
+});
+
+test('normalizes a screenshot extraction and applies the standard 200 UAH prepayment', () => {
+  const result = normalizeExtractedDraft({
+    customerName: 'Олена',
+    instagramHandle: '@olena',
+    phone: '+380671234567',
+    email: '',
+    city: 'Київ',
+    branch: 'Відділення 12',
+    itemsSummary: 'Комплект постільної білизни — 1 шт × 1450 грн',
+    totalAmount: 1650,
+    prepaymentAmount: null,
+    codAmount: 1450,
+    ttn: '',
+    confidence: 0.91
+  });
+  assert.equal(result.draft.prepaymentAmount, 200);
+  assert.deepEqual(result.missingFields, []);
+  assert.equal(result.warnings.length, 1);
+});
+
+test('calculates the full order value when a screenshot only shows the NovaPay balance', () => {
+  const result = normalizeExtractedDraft({
+    customerName: 'Олена',
+    phone: '+380671234567',
+    itemsSummary: 'Комплект постільної білизни',
+    totalAmount: null,
+    prepaymentAmount: null,
+    codAmount: 1450,
+    confidence: 0.85
+  });
+  assert.equal(result.draft.prepaymentAmount, 200);
+  assert.equal(result.draft.totalAmount, 1650);
+  assert.deepEqual(result.missingFields, []);
+  assert.equal(result.warnings.length, 2);
+});
+
+test('keeps uncertain screenshot fields blocked until corrected', () => {
+  const result = normalizeExtractedDraft({
+    customerName: 'Олена',
+    phone: '',
+    itemsSummary: '',
+    totalAmount: null,
+    prepaymentAmount: null,
+    confidence: 0.2
+  });
+  assert.deepEqual(result.missingFields, ['phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
 });

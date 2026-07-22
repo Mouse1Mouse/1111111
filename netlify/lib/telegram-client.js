@@ -53,6 +53,15 @@ export function telegramClient(token) {
     getWebhookInfo() {
       return call('getWebhookInfo', {});
     },
+    async downloadImage(fileId) {
+      const file = await call('getFile', { file_id: fileId });
+      if (!file?.file_path) throw new Error('Telegram file is unavailable');
+      const result = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
+      if (!result.ok) throw new Error('Telegram file download failed');
+      const extension = file.file_path.split('.').pop()?.toLowerCase();
+      const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+      return { bytes: await result.arrayBuffer(), mimeType };
+    },
     setWebhook(url, secretToken) {
       return call('setWebhook', {
         url,

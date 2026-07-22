@@ -16,6 +16,7 @@ import {
   parseAmount,
   statusLabel
 } from '../lib/order-core.js';
+import { extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
 import {
   clearSession,
   claimUpdate,
@@ -45,6 +46,7 @@ function money(value) {
 }
 
 const MENU_BUTTONS = Object.freeze({
+  SCREENSHOT: '📸 Замовлення зі скріну',
   NEW: '➕ Нове замовлення',
   ORDERS: '📋 Активні замовлення',
   HELP: 'ℹ️ Допомога',
@@ -53,6 +55,7 @@ const MENU_BUTTONS = Object.freeze({
 
 const MAIN_KEYBOARD = Object.freeze({
   keyboard: [
+    [{ text: MENU_BUTTONS.SCREENSHOT }],
     [{ text: MENU_BUTTONS.NEW }, { text: MENU_BUTTONS.ORDERS }],
     [{ text: MENU_BUTTONS.HELP }]
   ],
@@ -95,6 +98,8 @@ async function sendOrder(bot, chatId, order, receiptInstructions = false) {
 
 const HELP_TEXT = [
   '<b>MIVA · Instagram + NovaPay</b>',
+  '',
+  '📸 Просто надішліть скрін замовлення — бот сам заповнить дані.',
   '',
   '/new — створити замовлення',
   '/orders — активні замовлення',
@@ -152,6 +157,148 @@ const STEPS = {
   }
 };
 
+const AI_EDIT_FIELDS = Object.freeze({
+  name: { key: 'customerName', label: 'Ім’я', prompt: 'Введіть ім’я клієнта:', validate: STEPS.customerName.validate },
+  instagram: {
+    key: 'instagramHandle',
+    label: 'Instagram',
+    prompt: 'Введіть Instagram клієнта або -:',
+    validate: (value) => value === '-' || cleanText(value, 80).length >= 2
+  },
+  phone: { key: 'phone', label: 'Телефон', prompt: 'Введіть телефон клієнта:', validate: STEPS.phone.validate },
+  email: { key: 'email', label: 'Email', prompt: 'Введіть email або -:', validate: STEPS.email.validate },
+  city: {
+    key: 'city',
+    label: 'Місто',
+    prompt: 'Введіть місто доставки або -:',
+    validate: (value) => value === '-' || cleanText(value, 120).length >= 2
+  },
+  branch: {
+    key: 'branch',
+    label: 'Відділення',
+    prompt: 'Введіть відділення/поштомат або -:',
+    validate: (value) => value === '-' || cleanText(value, 180).length >= 1
+  },
+  items: { key: 'itemsSummary', label: 'Товари', prompt: STEPS.itemsSummary.prompt, validate: STEPS.itemsSummary.validate },
+  total: { key: 'totalAmount', label: 'Повна сума', prompt: STEPS.totalAmount.prompt, validate: STEPS.totalAmount.validate },
+  prepay: {
+    key: 'prepaymentAmount',
+    label: 'Передоплата',
+    prompt: STEPS.prepaymentAmount.prompt,
+    validate: STEPS.prepaymentAmount.validate
+  },
+  ttn: { key: 'ttn', label: 'ТТН', prompt: STEPS.ttn.prompt, validate: STEPS.ttn.validate }
+});
+
+const REQUIRED_FIELD_LABELS = Object.freeze({
+  customerName: 'ім’я',
+  phone: 'телефон',
+  itemsSummary: 'товари',
+  totalAmount: 'повна сума',
+  prepaymentAmount: 'передоплата'
+});
+
+function selectedImage(message) {
+  if (Array.isArray(message.photo) && message.photo.length) {
+    const photo = [...message.photo].sort((a, b) => (a.file_size || 0) - (b.file_size || 0)).at(-1);
+    return { fileId: photo.file_id, fileSize: photo.file_size || 0 };
+  }
+  if (message.document?.mime_type?.startsWith('image/')) {
+    return { fileId: message.document.file_id, fileSize: message.document.file_size || 0 };
+  }
+  return null;
+}
+
+function aiDraftState(session) {
+  const normalized = normalizeExtractedDraft({ ...session.draft, confidence: session.confidence });
+  return {
+    draft: { ...session.draft, ...normalized.draft },
+    missingFields: normalized.missingFields,
+    warnings: [...new Set([...(session.warnings || []), ...normalized.warnings])]
+  };
+}
+
+function formatAiDraftHtml(session) {
+  const { draft, missingFields, warnings } = aiDraftState(session);
+  const amount = (value) => value === null || value === undefined ? 'не розпізнано' : `${Number(value).toFixed(2)} грн`;
+  const lines = [
+    '<b>📸 Розпізнане замовлення</b>',
+    '',
+    `👤 ${escapeHtml(draft.customerName || 'не розпізнано')}`,
+    `📱 Instagram: ${escapeHtml(draft.instagramHandle || 'не розпізнано')}`,
+    `📞 ${escapeHtml(draft.phone || 'не розпізнано')}`,
+    `📧 ${escapeHtml(draft.email === '-' ? 'не вказано' : draft.email)}`,
+    `🏙 Місто: ${escapeHtml(draft.city || 'не розпізнано')}`,
+    `📦 Відділення: ${escapeHtml(draft.branch || 'не розпізнано')}`,
+    '',
+    `<b>Товари:</b> ${escapeHtml(draft.itemsSummary || 'не розпізнано')}`,
+    `💰 Повна сума: <b>${amount(draft.totalAmount)}</b>`,
+    `🏦 Передоплата IBAN: <b>${amount(draft.prepaymentAmount)}</b>`,
+    `🚚 ТТН: ${escapeHtml(draft.ttn === '-' ? 'ще немає' : draft.ttn)}`
+  ];
+
+  for (const warning of warnings) lines.push(`⚠️ ${escapeHtml(warning)}`);
+  if (missingFields.length) {
+    lines.push('', `❗ Треба доповнити: <b>${missingFields.map((field) => REQUIRED_FIELD_LABELS[field]).join(', ')}</b>`);
+  } else {
+    lines.push('', '<b>Перевірте дані та збережіть замовлення.</b>');
+  }
+  return lines.join('\n');
+}
+
+function aiConfirmationKeyboard(session) {
+  const { missingFields } = aiDraftState(session);
+  const rows = [];
+  if (!missingFields.length) {
+    rows.push([{ text: '✅ Все правильно — зберегти', callback_data: `ai_save:${session.draft.id}` }]);
+  }
+  rows.push([{ text: '✏️ Виправити поле', callback_data: `ai_edit:${session.draft.id}` }]);
+  rows.push([{ text: '❌ Скасувати', callback_data: 'discard:ai' }]);
+  return { inline_keyboard: rows };
+}
+
+async function sendAiDraftPreview(bot, chatId, session) {
+  await bot.sendMessage(chatId, formatAiDraftHtml(session), {
+    reply_markup: aiConfirmationKeyboard(session)
+  });
+}
+
+async function handleImageOrder(bot, chatId, message, image) {
+  if (image.fileSize > 8 * 1024 * 1024) {
+    await sendMainMenu(bot, chatId, 'Скрін завеликий. Надішліть зображення до 8 МБ.');
+    return;
+  }
+
+  await clearSession(chatId);
+  const requestId = createOrderId();
+  await saveSession(chatId, { mode: 'ai_processing', requestId, updatedAt: new Date().toISOString() });
+  await bot.sendMessage(chatId, '⏳ Розпізнаю замовлення зі скріну…', { reply_markup: CANCEL_KEYBOARD });
+
+  try {
+    const downloaded = await bot.downloadImage(image.fileId);
+    const extracted = await extractOrderFromImage({
+      ...downloaded,
+      caption: message.caption || '',
+      operatorId: chatId
+    });
+    const session = {
+      mode: 'confirm_ai_order',
+      draft: { id: requestId, ...extracted.draft },
+      warnings: extracted.warnings,
+      confidence: extracted.confidence,
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, session);
+    await sendAiDraftPreview(bot, chatId, session);
+  } catch (error) {
+    await clearSession(chatId);
+    const messageText = error?.message === 'ai_gateway_not_configured'
+      ? 'AI-розпізнавання ще не активоване в Netlify.'
+      : 'Не вдалося розпізнати цей скрін. Спробуйте обрізати його до переписки та надіслати ще раз.';
+    await sendMainMenu(bot, chatId, messageText);
+  }
+}
+
 async function startNewOrder(bot, chatId) {
   const session = {
     mode: 'new_order',
@@ -202,6 +349,29 @@ async function handleNewOrderStep(bot, chatId, text, session) {
 
 async function handleSessionInput(bot, chatId, text, session) {
   if (session.mode === 'new_order') return handleNewOrderStep(bot, chatId, text, session);
+
+  if (session.mode === 'await_ai_edit') {
+    const config = AI_EDIT_FIELDS[session.field];
+    const value = cleanText(text, config?.key === 'itemsSummary' ? 1200 : 180);
+    if (!config || !config.validate(value, session.draft)) {
+      await bot.sendMessage(chatId, `Значення не підходить.\n\n${config?.prompt || 'Спробуйте ще раз:'}`);
+      return;
+    }
+
+    let storedValue = value;
+    if (['instagramHandle', 'city', 'branch'].includes(config.key) && value === '-') storedValue = '';
+    if (['totalAmount', 'prepaymentAmount'].includes(config.key)) storedValue = parseAmount(value);
+    const updatedSession = {
+      ...session,
+      mode: 'confirm_ai_order',
+      field: null,
+      draft: { ...session.draft, [config.key]: storedValue },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendAiDraftPreview(bot, chatId, updatedSession);
+    return;
+  }
 
   if (session.mode === 'await_ttn') {
     if (!isValidTtn(text) || text === '-') {
@@ -264,11 +434,22 @@ async function showOrder(bot, chatId, id) {
 
 async function handleMessage(bot, message) {
   const chatId = String(message.chat.id);
+  const image = selectedImage(message);
+  if (image) {
+    await handleImageOrder(bot, chatId, message, image);
+    return;
+  }
   const text = cleanText(message.text, 1500);
   if (!text) return;
 
   if (/^\/start(?:@\w+)?$/i.test(text) || /^\/help(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.HELP) {
     await sendMainMenu(bot, chatId);
+    return;
+  }
+  if (text === MENU_BUTTONS.SCREENSHOT) {
+    await bot.sendMessage(chatId, 'Надішліть сюди один скрін переписки або замовлення. Я сам заповню дані й покажу їх для перевірки.', {
+      reply_markup: CANCEL_KEYBOARD
+    });
     return;
   }
   if (/^\/new(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.NEW) {
@@ -299,12 +480,69 @@ async function handleMessage(bot, message) {
 
 async function handleCallback(bot, callback) {
   const chatId = String(callback.message?.chat?.id || '');
-  const [action, id] = String(callback.data || '').split(':', 2);
+  const callbackParts = String(callback.data || '').split(':');
+  const action = callbackParts[0];
+  const id = callbackParts.at(-1);
   await bot.answerCallbackQuery(callback.id);
 
   if (action === 'discard') {
     await clearSession(chatId);
     await sendMainMenu(bot, chatId, 'Замовлення не збережено.');
+    return;
+  }
+
+  if (action === 'ai_edit') {
+    const session = await getSession(chatId);
+    if (!['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+      await bot.sendMessage(chatId, 'Цей скрін уже неактуальний. Надішліть його ще раз.');
+      return;
+    }
+    const entries = Object.entries(AI_EDIT_FIELDS);
+    const rows = [];
+    for (let index = 0; index < entries.length; index += 2) {
+      rows.push(entries.slice(index, index + 2).map(([code, field]) => ({
+        text: `✏️ ${field.label}`,
+        callback_data: `ai_field:${code}:${id}`
+      })));
+    }
+    await bot.sendMessage(chatId, 'Що потрібно виправити?', { reply_markup: { inline_keyboard: rows } });
+    return;
+  }
+
+  if (action === 'ai_field') {
+    const fieldCode = callbackParts[1];
+    const field = AI_EDIT_FIELDS[fieldCode];
+    const session = await getSession(chatId);
+    if (!field || !['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+      await bot.sendMessage(chatId, 'Ця дія вже неактуальна.');
+      return;
+    }
+    await saveSession(chatId, {
+      ...session,
+      mode: 'await_ai_edit',
+      field: fieldCode,
+      updatedAt: new Date().toISOString()
+    });
+    await bot.sendMessage(chatId, field.prompt, { reply_markup: CANCEL_KEYBOARD });
+    return;
+  }
+
+  if (action === 'ai_save') {
+    const session = await getSession(chatId);
+    if (session?.mode !== 'confirm_ai_order' || session.draft?.id !== id) {
+      await bot.sendMessage(chatId, 'Це підтвердження вже неактуальне. Перевірте активні замовлення.');
+      return;
+    }
+    const state = aiDraftState(session);
+    if (state.missingFields.length) {
+      await sendAiDraftPreview(bot, chatId, session);
+      return;
+    }
+    const order = createOrder(state.draft, { chatId });
+    await saveOrder(order);
+    await clearSession(chatId);
+    await sendMainMenu(bot, chatId, '✅ Замовлення зі скріну збережено.');
+    await sendOrder(bot, chatId, order);
     return;
   }
 

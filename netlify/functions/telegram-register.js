@@ -53,7 +53,9 @@ export const handler = async (event) => {
       lastErrorAt: info.last_error_date || null,
       lastError: info.last_error_message || null,
       operatorCount: operatorIds.length,
-      selfTestStatus
+      selfTestStatus,
+      aiGatewayConfigured: Boolean(process.env.OPENAI_API_KEY || process.env.NETLIFY_AI_GATEWAY_KEY),
+      visionModel: process.env.ORDER_VISION_MODEL || 'gpt-5.6-luna'
     });
   } catch {
     return response(502, { ok: false, error: 'Telegram registration failed' });
