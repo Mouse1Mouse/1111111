@@ -15,6 +15,7 @@ import {
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
 import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
+import { createPackingLabelDocument, wrapPackingLabelText } from '../netlify/lib/packing-label.js';
 import {
   buildInternetDocumentPayload,
   formatNovaPoshtaDate,
@@ -117,6 +118,23 @@ test('escapes Telegram HTML', () => {
 test('recovers a Nova Poshta TTN from a fresh Telegram order card', () => {
   assert.equal(parseTtnFromOrderCard('🚚 ТТН: 20451493965058\n📌 Статус: потрібно пробити чек'), '20451493965058');
   assert.equal(parseTtnFromOrderCard('🚚 ТТН: ще не додано'), '');
+});
+
+test('creates a printable 100x100 packing label without unsafe XML', () => {
+  const document = createPackingLabelDocument(draft({
+    id: 'MIVA-IG-260722-ABC123',
+    customerName: 'Олена & Петро',
+    city: 'Київ',
+    branch: '№25405',
+    itemsSummary: 'Чорний <рожевий> комплект, наволочки 50×70'
+  }), '20451493965058');
+  const svg = new TextDecoder().decode(document.bytes);
+  assert.equal(document.mimeType, 'image/svg+xml');
+  assert.match(document.filename, /100x100\.svg$/);
+  assert.match(svg, /Олена &amp; Петро/);
+  assert.match(svg, /Чорний &lt;рожевий&gt;/);
+  assert.match(svg, /20451493965058/);
+  assert.equal(wrapPackingLabelText('а '.repeat(100), 10, 3).length, 3);
 });
 
 test('derives a stable Telegram webhook secret without exposing the token', () => {

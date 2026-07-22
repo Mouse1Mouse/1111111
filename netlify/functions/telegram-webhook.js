@@ -18,6 +18,7 @@ import {
   statusLabel
 } from '../lib/order-core.js';
 import { applyPrepaymentChoice, extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
+import { createPackingLabelDocument } from '../lib/packing-label.js';
 import {
   createNovaPoshtaWaybill,
   downloadNovaPoshtaMarking,
@@ -123,6 +124,9 @@ function orderButtons(order) {
       { text: '🖨 Етикетка A4', callback_data: `np_label:a4:${order.id}` },
       { text: '🏷 100×100', callback_data: `np_label:zebra:${order.id}` }
     ]);
+  }
+  if (order.ttn) {
+    rows.push([{ text: '🏷 Опис комплекту 100×100', callback_data: `packing_label:${order.id}` }]);
   }
   if (order.status === ORDER_STATUSES.AWAITING_NOVAPAY) {
     rows.push([{ text: `✅ NovaPay ${money(order.codAmount)}`, callback_data: `novapay:${order.id}` }]);
@@ -997,6 +1001,21 @@ async function handleCallback(bot, callback) {
     } catch (error) {
       await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
     }
+    return;
+  }
+
+  if (action === 'packing_label') {
+    const ttn = order.ttn || parseTtnFromOrderCard(callback.message?.text);
+    if (!ttn) {
+      await bot.sendMessage(chatId, 'Для службової етикетки потрібна ТТН. Відкрийте актуальну картку замовлення ще раз.');
+      return;
+    }
+    await bot.sendMessage(chatId, '⏳ Готую опис комплекту 100×100…');
+    const document = createPackingLabelDocument(order, ttn);
+    await bot.sendDocument(chatId, document, {
+      caption: `Опис комплекту · ${escapeHtml(order.id)} · приклейте поруч із транспортною етикеткою Нової пошти.`,
+      parse_mode: 'HTML'
+    });
     return;
   }
 
