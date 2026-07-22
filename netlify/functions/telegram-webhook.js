@@ -7,12 +7,14 @@ import {
   createOrderId,
   escapeHtml,
   formatOrderHtml,
+  isValidCustomerOrderNumber,
   isValidEmail,
   isValidPhone,
   isValidTtn,
   markNovaPayReceived,
   markPrepaymentReceived,
   markReceiptDone,
+  normalizeCustomerOrderNumber,
   parseAmount,
   parseTtnFromOrderCard,
   statusLabel
@@ -226,6 +228,7 @@ const HELP_TEXT = [
   '<b>MIVA · Instagram + NovaPay</b>',
   '',
   '📸 Просто надішліть скрін замовлення — бот сам заповнить дані.',
+  'Перед скріном напишіть у переписці окремим рядком: <code>Замовлення №1542</code>',
   '',
   '/new — створити замовлення',
   '/orders — активні замовлення',
@@ -236,38 +239,44 @@ const HELP_TEXT = [
 ].join('\n');
 
 const STEPS = {
+  customerOrderNumber: {
+    prompt: '1/8 Введіть ваш номер замовлення. Наприклад: 1542',
+    validate: isValidCustomerOrderNumber,
+    error: 'Номер може містити літери, цифри, дефіс або риску. Наприклад: 1542 або M-1542.',
+    next: 'customerName'
+  },
   customerName: {
-    prompt: '1/7 Введіть ім’я клієнта:',
+    prompt: '2/8 Введіть ім’я клієнта:',
     validate: (value) => cleanText(value, 120).length >= 2,
     error: 'Введіть ім’я клієнта (щонайменше 2 символи).',
     next: 'phone'
   },
   phone: {
-    prompt: '2/7 Введіть телефон клієнта:',
+    prompt: '3/8 Введіть телефон клієнта:',
     validate: isValidPhone,
     error: 'Телефон не схожий на правильний. Наприклад: +380XXXXXXXXX',
     next: 'email'
   },
   email: {
-    prompt: '3/7 Введіть email для чека або поставте - якщо його немає:',
+    prompt: '4/8 Введіть email для чека або поставте - якщо його немає:',
     validate: (value) => value === '-' || isValidEmail(value),
     error: 'Введіть правильний email або один символ -',
     next: 'itemsSummary'
   },
   itemsSummary: {
-    prompt: '4/7 Опишіть товари для чека: назва, розмір, кількість, ціна.',
+    prompt: '5/8 Опишіть товари для чека: назва, розмір, кількість, ціна.',
     validate: (value) => cleanText(value, 1200).length >= 3,
     error: 'Додайте назву товару, розмір, кількість і ціну.',
     next: 'totalAmount'
   },
   totalAmount: {
-    prompt: '5/7 Введіть повну суму замовлення у гривнях:',
+    prompt: '6/8 Введіть повну суму замовлення у гривнях:',
     validate: (value) => (parseAmount(value) || 0) > 0,
     error: 'Введіть суму числом, наприклад 1650 або 1650,50.',
     next: 'prepaymentAmount'
   },
   prepaymentAmount: {
-    prompt: '6/7 Введіть передоплату на IBAN. Зазвичай 200:',
+    prompt: '7/8 Введіть передоплату на IBAN. Зазвичай 200:',
     validate: (value, draft) => {
       const amount = parseAmount(value);
       return amount !== null && amount >= 0 && amount <= parseAmount(draft.totalAmount);
@@ -276,7 +285,7 @@ const STEPS = {
     next: 'ttn'
   },
   ttn: {
-    prompt: '7/7 Введіть ТТН Нової пошти або - якщо її ще немає:',
+    prompt: '8/8 Введіть ТТН Нової пошти або - якщо її ще немає:',
     validate: isValidTtn,
     error: 'Введіть коректну ТТН або один символ -',
     next: null
@@ -284,6 +293,12 @@ const STEPS = {
 };
 
 const AI_EDIT_FIELDS = Object.freeze({
+  order: {
+    key: 'customerOrderNumber',
+    label: 'Номер замовлення',
+    prompt: 'Введіть ваш номер замовлення без слова «Замовлення». Наприклад: 1542',
+    validate: isValidCustomerOrderNumber
+  },
   name: { key: 'customerName', label: 'Ім’я', prompt: 'Введіть ім’я клієнта:', validate: STEPS.customerName.validate },
   instagram: {
     key: 'instagramHandle',
@@ -325,6 +340,7 @@ const AI_EDIT_FIELDS = Object.freeze({
 });
 
 const REQUIRED_FIELD_LABELS = Object.freeze({
+  customerOrderNumber: 'номер замовлення',
   customerName: 'ім’я',
   phone: 'телефон',
   itemsSummary: 'товари',
@@ -366,6 +382,7 @@ function formatAiDraftHtml(session) {
   const lines = [
     '<b>📸 Розпізнане замовлення</b>',
     '',
+    `🧾 Замовлення №<b>${escapeHtml(draft.customerOrderNumber || 'не розпізнано')}</b>`,
     `👤 ${escapeHtml(draft.customerName || 'не розпізнано')}`,
     `📱 Instagram: ${escapeHtml(draft.instagramHandle || 'не розпізнано')}`,
     `📞 ${escapeHtml(draft.phone || 'не розпізнано')}`,
@@ -451,12 +468,12 @@ async function handleImageOrder(bot, chatId, message, image) {
 async function startNewOrder(bot, chatId) {
   const session = {
     mode: 'new_order',
-    step: 'customerName',
+    step: 'customerOrderNumber',
     draft: { id: createOrderId() },
     updatedAt: new Date().toISOString()
   };
   await saveSession(chatId, session);
-  await bot.sendMessage(chatId, STEPS.customerName.prompt, { reply_markup: CANCEL_KEYBOARD });
+  await bot.sendMessage(chatId, STEPS.customerOrderNumber.prompt, { reply_markup: CANCEL_KEYBOARD });
 }
 
 async function handleNewOrderStep(bot, chatId, text, session) {
@@ -576,6 +593,7 @@ async function handleSessionInput(bot, chatId, text, session) {
     }
 
     let storedValue = value;
+    if (config.key === 'customerOrderNumber') storedValue = normalizeCustomerOrderNumber(value);
     if (['instagramHandle', 'city', 'branch'].includes(config.key) && value === '-') storedValue = '';
     if (['totalAmount', 'prepaymentAmount'].includes(config.key)) storedValue = parseAmount(value);
     const updatedDraft = config.key === 'prepaymentAmount'

@@ -1,5 +1,12 @@
 import { createHash } from 'node:crypto';
-import { cleanText, isValidEmail, isValidPhone, parseAmount } from './order-core.js';
+import {
+  cleanText,
+  isValidCustomerOrderNumber,
+  isValidEmail,
+  isValidPhone,
+  normalizeCustomerOrderNumber,
+  parseAmount
+} from './order-core.js';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -8,6 +15,10 @@ const EXTRACTION_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
+    customerOrderNumber: {
+      type: 'string',
+      description: 'Merchant order number explicitly written near Замовлення №, Заказ №, # or order number, or empty string.'
+    },
     customerName: { type: 'string', description: 'Customer name visible in the screenshot, or empty string.' },
     instagramHandle: { type: 'string', description: 'Instagram username including @ when visible, or empty string.' },
     phone: { type: 'string', description: 'Customer phone number, or empty string.' },
@@ -34,6 +45,7 @@ const EXTRACTION_SCHEMA = {
     confidence: { type: 'number', minimum: 0, maximum: 1 }
   },
   required: [
+    'customerOrderNumber',
     'customerName',
     'instagramHandle',
     'phone',
@@ -52,6 +64,8 @@ const EXTRACTION_SCHEMA = {
 const EXTRACTION_PROMPT = `
 Extract an Instagram bedding order from this screenshot for a Ukrainian business.
 Return only facts that are explicitly visible. Never invent missing customer or payment data.
+Extract customerOrderNumber only when it is explicitly labelled like "Замовлення №1542", "Заказ №1542", "№ замовлення 1542" or "Order #1542".
+Do not use the internal MIVA id as customerOrderNumber.
 Do not confuse a phone number, order number, message time or price with a Nova Poshta TTN.
 The full order value is the total price of all goods. The IBAN prepayment is commonly 200 UAH, but return it only if visible.
 The COD amount is the remaining amount that the customer will pay through NovaPay; keep it separate from the full value.
@@ -92,6 +106,7 @@ export function normalizeExtractedDraft(result) {
 
   const customerName = cleanText(result?.customerName || result?.instagramHandle, 120);
   const draft = {
+    customerOrderNumber: normalizeCustomerOrderNumber(result?.customerOrderNumber),
     customerName,
     instagramHandle: cleanText(result?.instagramHandle, 80),
     phone: cleanText(result?.phone, 40),
@@ -106,6 +121,7 @@ export function normalizeExtractedDraft(result) {
   };
 
   const missingFields = [];
+  if (!isValidCustomerOrderNumber(draft.customerOrderNumber)) missingFields.push('customerOrderNumber');
   if (draft.customerName.length < 2) missingFields.push('customerName');
   if (!isValidPhone(draft.phone)) missingFields.push('phone');
   if (draft.itemsSummary.length < 3) missingFields.push('itemsSummary');

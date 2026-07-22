@@ -35,6 +35,18 @@ export function parseAmount(value) {
   return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null;
 }
 
+export function normalizeCustomerOrderNumber(value) {
+  return cleanText(value, 80)
+    .replace(/^(?:(?:замовлення|заказ|order)\s*(?:номер|number|№|#)?|(?:номер\s+(?:замовлення|заказу|заказа)))\s*/iu, '')
+    .replace(/^(?:№|#)\s*/u, '')
+    .trim()
+    .slice(0, 40);
+}
+
+export function isValidCustomerOrderNumber(value) {
+  return /^[\p{L}\p{N}][\p{L}\p{N}._/-]{0,39}$/u.test(normalizeCustomerOrderNumber(value));
+}
+
 export function parseTtnFromOrderCard(value) {
   const match = String(value || '').match(/ТТН:\s*(\d{12,20})/iu);
   return match?.[1] || '';
@@ -96,6 +108,7 @@ export function createOrder(draft, context = {}) {
   const order = {
     id: cleanText(draft.id || createOrderId(), 40),
     source: 'instagram',
+    customerOrderNumber: normalizeCustomerOrderNumber(draft.customerOrderNumber),
     customerName: cleanText(draft.customerName, 120),
     instagramHandle: cleanText(draft.instagramHandle, 80),
     phone: cleanText(draft.phone, 40),
@@ -201,6 +214,7 @@ export function formatOrderHtml(order, { receiptInstructions = false } = {}) {
   const ttn = order.ttn ? escapeHtml(order.ttn) : 'ще не додано';
   const lines = [
     `<b>${escapeHtml(order.id)}</b> · Instagram`,
+    ...(order.customerOrderNumber ? [`🧾 Замовлення №<b>${escapeHtml(order.customerOrderNumber)}</b>`] : []),
     `👤 ${escapeHtml(order.customerName)}`,
     ...(order.instagramHandle ? [`📱 Instagram: ${escapeHtml(order.instagramHandle)}`] : []),
     `📞 ${escapeHtml(order.phone)}`,

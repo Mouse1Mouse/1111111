@@ -257,7 +257,11 @@ export async function prepareNovaPoshtaShipment(order, options = {}) {
     weight: positiveNumber(options.weight || process.env.NOVA_POSHTA_DEFAULT_WEIGHT_KG),
     dimensions: configuredDimensions(options),
     seatsAmount: 1,
-    description: cleanText(options.description || order.itemsSummary || process.env.NOVA_POSHTA_CARGO_DESCRIPTION || 'Постільна білизна', 36),
+    description: cleanText(
+      options.description || [order.customerOrderNumber ? `№${order.customerOrderNumber}` : '', order.itemsSummary].filter(Boolean).join(' ') ||
+      process.env.NOVA_POSHTA_CARGO_DESCRIPTION || 'Постільна білизна',
+      36
+    ),
     deliveryPayer: options.deliveryPayer === 'Sender' ? 'Sender' : 'Recipient',
     sender
   };

@@ -7,9 +7,11 @@ import {
   createOrder,
   createOrderId,
   escapeHtml,
+  isValidCustomerOrderNumber,
   markNovaPayReceived,
   markPrepaymentReceived,
   markReceiptDone,
+  normalizeCustomerOrderNumber,
   parseAmount,
   parseTtnFromOrderCard
 } from '../netlify/lib/order-core.js';
@@ -30,6 +32,7 @@ const NOW = '2026-07-22T10:00:00.000Z';
 function draft(overrides = {}) {
   return {
     id: 'MIVA-IG-260722-ABC123',
+    customerOrderNumber: '1542',
     customerName: 'Тестовий клієнт',
     phone: '+380671234567',
     email: 'client@example.com',
@@ -45,6 +48,14 @@ test('parses Ukrainian money formats and calculates the NovaPay balance', () => 
   assert.equal(parseAmount('1 650,50 грн'), 1650.5);
   assert.equal(calculateCodAmount('1650', '200'), 1450);
   assert.equal(parseAmount('-5'), null);
+});
+
+test('normalizes a merchant order number without confusing it with a TTN', () => {
+  assert.equal(normalizeCustomerOrderNumber('Замовлення №1542'), '1542');
+  assert.equal(normalizeCustomerOrderNumber('Заказ #M-1543'), 'M-1543');
+  assert.equal(normalizeCustomerOrderNumber('Номер заказу 1544'), '1544');
+  assert.equal(isValidCustomerOrderNumber('M-1543'), true);
+  assert.equal(isValidCustomerOrderNumber('номер з пробілом'), false);
 });
 
 test('creates a stable safe order identifier', () => {
@@ -123,6 +134,7 @@ test('recovers a Nova Poshta TTN from a fresh Telegram order card', () => {
 test('creates a printable 100x100 packing label without unsafe XML', () => {
   const document = createPackingLabelDocument(draft({
     id: 'MIVA-IG-260722-ABC123',
+    customerOrderNumber: '1542',
     customerName: 'Олена & Петро',
     city: 'Київ',
     branch: '№25405',
@@ -134,6 +146,7 @@ test('creates a printable 100x100 packing label without unsafe XML', () => {
   assert.match(svg, /Олена &amp; Петро/);
   assert.match(svg, /Чорний &lt;рожевий&gt;/);
   assert.match(svg, /20451493965058/);
+  assert.match(svg, /ЗАМОВЛЕННЯ №1542/);
   assert.equal(wrapPackingLabelText('а '.repeat(100), 10, 3).length, 3);
 });
 
@@ -147,6 +160,7 @@ test('derives a stable Telegram webhook secret without exposing the token', () =
 
 test('asks for a prepayment choice when it is absent from the screenshot', () => {
   const result = normalizeExtractedDraft({
+    customerOrderNumber: '1542',
     customerName: 'Олена',
     instagramHandle: '@olena',
     phone: '+380671234567',
@@ -168,6 +182,7 @@ test('asks for a prepayment choice when it is absent from the screenshot', () =>
 
 test('calculates the full order value after choosing a prepayment for a visible NovaPay balance', () => {
   const result = normalizeExtractedDraft({
+    customerOrderNumber: '1543',
     customerName: 'Олена',
     phone: '+380671234567',
     itemsSummary: 'Комплект постільної білизни',
@@ -201,7 +216,7 @@ test('keeps uncertain screenshot fields blocked until corrected', () => {
     prepaymentAmount: null,
     confidence: 0.2
   });
-  assert.deepEqual(result.missingFields, ['phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
+  assert.deepEqual(result.missingFields, ['customerOrderNumber', 'phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
 });
 
 test('normalizes Nova Poshta phone numbers and Kyiv shipment dates', () => {
