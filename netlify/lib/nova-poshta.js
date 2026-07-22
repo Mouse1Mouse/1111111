@@ -73,28 +73,34 @@ async function resolveSender(options = {}) {
   const sender = selectedByRef(counterparties.data, options.senderRef || process.env.NOVA_POSHTA_SENDER_REF);
   if (!sender?.Ref || !sender?.City) throw new Error('nova_poshta_sender_missing');
 
-  const [addresses, contacts] = await Promise.all([
-    novaPoshtaCall('CounterpartyGeneral', 'getCounterpartyAddresses', {
-      Ref: sender.Ref,
-      CounterpartyProperty: 'Sender'
-    }, options),
+  const senderWarehouseInput = options.senderWarehouse;
+  const [addresses, contacts, senderWarehouse] = await Promise.all([
+    senderWarehouseInput
+      ? Promise.resolve({ data: [] })
+      : novaPoshtaCall('CounterpartyGeneral', 'getCounterpartyAddresses', {
+        Ref: sender.Ref,
+        CounterpartyProperty: 'Sender'
+      }, options),
     novaPoshtaCall('CounterpartyGeneral', 'getCounterpartyContactPersons', {
       Ref: sender.Ref,
       Page: '1'
-    }, options)
+    }, options),
+    senderWarehouseInput
+      ? resolveWarehouse(senderWarehouseInput.city, senderWarehouseInput.branch, options)
+      : Promise.resolve(null)
   ]);
-  const address = selectedByRef(addresses.data, options.senderAddressRef || process.env.NOVA_POSHTA_SENDER_ADDRESS_REF);
+  const address = senderWarehouse || selectedByRef(addresses.data, options.senderAddressRef || process.env.NOVA_POSHTA_SENDER_ADDRESS_REF);
   const contact = selectedByRef(contacts.data, options.senderContactRef || process.env.NOVA_POSHTA_SENDER_CONTACT_REF);
   if (!address?.Ref || !contact?.Ref) throw new Error('nova_poshta_sender_details_missing');
 
   return {
     ref: sender.Ref,
-    cityRef: options.senderCityRef || process.env.NOVA_POSHTA_SENDER_CITY_REF || sender.City,
+    cityRef: options.senderCityRef || process.env.NOVA_POSHTA_SENDER_CITY_REF || address.CityRef || address.SettlementRef || sender.City,
     addressRef: address.Ref,
     contactRef: contact.Ref,
     phone: normalizeNovaPoshtaPhone(options.senderPhone || process.env.NOVA_POSHTA_SENDER_PHONE || contact.Phones),
     description: cleanText(sender.Description || [sender.LastName, sender.FirstName, sender.MiddleName].filter(Boolean).join(' '), 120),
-    addressDescription: cleanText(address.Description, 160),
+    addressDescription: cleanText(address.Description || address.ShortAddress, 160),
     contactDescription: cleanText(contact.Description, 120)
   };
 }
@@ -114,6 +120,16 @@ function requestedWarehouseNumber(value) {
   return onlyNumber ? String(Number(onlyNumber[1])) : '';
 }
 
+export function parseSenderWarehouseSelection(value) {
+  const text = cleanText(value, 180);
+  const match = text.match(/(?:,?\s*(?:(?:відділення|відд\.?)\s*(?:№|#)?|№|#)\s*)?(\d+)\s*$/iu);
+  if (!match) return null;
+  const number = String(Number(match[1]));
+  const city = text.slice(0, match.index).replace(/[\s,;:-]+$/u, '').trim();
+  if (city.length < 2 || number === '0') return null;
+  return { city, branch: `Відділення №${number}`, number };
+}
+
 function warehouseScore(warehouse, query, number) {
   const haystack = cleanText(`${warehouse.Description || ''} ${warehouse.ShortAddress || ''}`, 300).toLocaleLowerCase('uk-UA');
   const needle = cleanText(query, 180).toLocaleLowerCase('uk-UA');
@@ -128,9 +144,9 @@ function warehouseScore(warehouse, query, number) {
   return score;
 }
 
-async function resolveRecipientWarehouse(order, options = {}) {
-  const city = recipientCityName(order.city);
-  const query = cleanText(order.branch, 180);
+async function resolveWarehouse(cityValue, queryValue, options = {}) {
+  const city = recipientCityName(cityValue);
+  const query = cleanText(queryValue, 180);
   if (!city || !query) throw new Error('nova_poshta_destination_missing');
   const number = requestedWarehouseNumber(query);
   const properties = {
@@ -151,6 +167,10 @@ async function resolveRecipientWarehouse(order, options = {}) {
     throw new Error(candidates.length ? 'nova_poshta_warehouse_ambiguous' : 'nova_poshta_warehouse_not_found');
   }
   return best.warehouse;
+}
+
+async function resolveRecipientWarehouse(order, options = {}) {
+  return resolveWarehouse(order.city, order.branch, options);
 }
 
 function configuredDimensions(options = {}) {

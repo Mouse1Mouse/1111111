@@ -21,6 +21,7 @@ import {
   createNovaPoshtaWaybill,
   downloadNovaPoshtaMarking,
   isNovaPoshtaConfigured,
+  parseSenderWarehouseSelection,
   prepareNovaPoshtaShipment
 } from '../lib/nova-poshta.js';
 import {
@@ -81,6 +82,7 @@ async function sendMainMenu(bot, chatId, text = HELP_TEXT) {
 
 const INPUT_SESSION_MODES = new Set([
   'new_order',
+  'await_np_sender_warehouse',
   'await_np_weight',
   'await_np_dimensions',
   'await_ai_edit',
@@ -487,6 +489,36 @@ async function handleNewOrderStep(bot, chatId, text, session) {
 async function handleSessionInput(bot, chatId, text, session) {
   if (session.mode === 'new_order') return handleNewOrderStep(bot, chatId, text, session);
 
+  if (session.mode === 'await_np_sender_warehouse') {
+    const senderWarehouse = parseSenderWarehouseSelection(text);
+    if (!senderWarehouse) {
+      await bot.sendMessage(chatId, 'Введіть місто та номер відділення відправника. Наприклад: Нетішин, №1');
+      return;
+    }
+    const order = await getOrder(session.orderId);
+    if (!order || order.status !== ORDER_STATUSES.READY_TO_SHIP || order.ttn) {
+      await clearSession(chatId);
+      await bot.sendMessage(chatId, 'Замовлення вже не готове до створення нової ТТН. Відкрийте його ще раз.');
+      return;
+    }
+    await bot.sendMessage(chatId, '⏳ Перевіряю відправника, обидва відділення та контактні дані в Новій пошті…');
+    try {
+      const shipment = await prepareNovaPoshtaShipment(order, { senderWarehouse });
+      const updatedSession = {
+        ...session,
+        mode: 'confirm_nova_poshta_ttn',
+        senderWarehouse,
+        shipment,
+        updatedAt: new Date().toISOString()
+      };
+      await saveSession(chatId, updatedSession);
+      await sendShipmentPreview(bot, chatId, shipment);
+    } catch (error) {
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}\n\nСпробуйте інше місто або номер відділення.`);
+    }
+    return;
+  }
+
   if (session.mode === 'await_np_weight') {
     const weight = Number(String(text).replace(',', '.'));
     if (!Number.isFinite(weight) || weight < 0.1 || weight > 30) {
@@ -865,20 +897,18 @@ async function handleCallback(bot, callback) {
       await bot.sendMessage(chatId, 'Для цього замовлення зараз не можна створити нову ТТН. Перевірте передоплату та наявну ТТН.');
       return;
     }
-    await bot.sendMessage(chatId, '⏳ Перевіряю відправника, місто та відділення в Новій пошті…');
-    try {
-      const shipment = await prepareNovaPoshtaShipment(order);
-      const session = {
-        mode: 'confirm_nova_poshta_ttn',
-        orderId: id,
-        shipment,
-        updatedAt: new Date().toISOString()
-      };
-      await saveSession(chatId, session);
-      await sendShipmentPreview(bot, chatId, shipment);
-    } catch (error) {
-      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
-    }
+    await saveSession(chatId, {
+      mode: 'await_np_sender_warehouse',
+      orderId: id,
+      updatedAt: new Date().toISOString()
+    });
+    await bot.editMessageReplyMarkup(chatId, callback.message?.message_id).catch(() => {});
+    await bot.sendMessage(chatId, [
+      '<b>Звідки сьогодні відправляємо?</b>',
+      '',
+      'Введіть місто та номер будь-якого відділення Нової пошти.',
+      'Наприклад: <code>Нетішин, №1</code>'
+    ].join('\n'), { reply_markup: CANCEL_KEYBOARD });
     return;
   }
 

@@ -17,7 +17,8 @@ import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/o
 import {
   buildInternetDocumentPayload,
   formatNovaPoshtaDate,
-  normalizeNovaPoshtaPhone
+  normalizeNovaPoshtaPhone,
+  parseSenderWarehouseSelection
 } from '../netlify/lib/nova-poshta.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
@@ -181,6 +182,20 @@ test('normalizes Nova Poshta phone numbers and Kyiv shipment dates', () => {
   assert.equal(normalizeNovaPoshtaPhone('+38 (067) 123-45-67'), '380671234567');
   assert.equal(formatNovaPoshtaDate(new Date('2026-07-22T10:00:00.000Z')), '22.07.2026');
   assert.throws(() => normalizeNovaPoshtaPhone('12345'), /invalid_recipient_phone/);
+});
+
+test('parses a sender warehouse selected for the current shipment', () => {
+  assert.deepEqual(parseSenderWarehouseSelection('Нетішин, відділення №1'), {
+    city: 'Нетішин',
+    branch: 'Відділення №1',
+    number: '1'
+  });
+  assert.deepEqual(parseSenderWarehouseSelection('Хмельницький 12'), {
+    city: 'Хмельницький',
+    branch: 'Відділення №12',
+    number: '12'
+  });
+  assert.equal(parseSenderWarehouseSelection('відділення'), null);
 });
 
 test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
