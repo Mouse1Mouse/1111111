@@ -19,6 +19,7 @@ import {
 import {
   clearSession,
   claimUpdate,
+  connectOrderStore,
   getOrder,
   getSession,
   listOrders,
@@ -372,6 +373,7 @@ export const handler = async (event) => {
   const allowedChatIds = parseChatIds(process.env.TELEGRAM_OPERATOR_CHAT_IDS || process.env.TELEGRAM_CHAT_IDS);
   if (!chatId || !allowedChatIds.includes(chatId)) return jsonResponse(200, { ok: true });
 
+  connectOrderStore(event);
   const updateId = String(update.update_id ?? '');
   if (updateId && !await claimUpdate(updateId)) return jsonResponse(200, { ok: true });
 

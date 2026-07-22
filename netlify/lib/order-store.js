@@ -1,6 +1,10 @@
-import { getStore } from '@netlify/blobs';
+import { connectLambda, getStore } from '@netlify/blobs';
 
 const STORE_NAME = 'miva-instagram-orders';
+
+export function connectOrderStore(event) {
+  connectLambda(event);
+}
 
 function store() {
   return getStore({ name: STORE_NAME, consistency: 'strong' });
