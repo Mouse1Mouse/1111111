@@ -14,6 +14,7 @@ import {
   markPrepaymentReceived,
   markReceiptDone,
   parseAmount,
+  parseTtnFromOrderCard,
   statusLabel
 } from '../lib/order-core.js';
 import { applyPrepaymentChoice, extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
@@ -981,15 +982,16 @@ async function handleCallback(bot, callback) {
 
   if (action === 'np_label') {
     const format = callbackParts[1] === 'zebra' ? 'zebra' : 'a4';
-    if (!order.ttn || !isNovaPoshtaConfigured()) {
+    const ttn = order.ttn || parseTtnFromOrderCard(callback.message?.text);
+    if (!ttn || !isNovaPoshtaConfigured()) {
       await bot.sendMessage(chatId, 'Для етикетки потрібна ТТН та підключений API Нової пошти.');
       return;
     }
     await bot.sendMessage(chatId, '⏳ Готую PDF зі штрихкодом…');
     try {
-      const document = await downloadNovaPoshtaMarking(order.ttn, format);
+      const document = await downloadNovaPoshtaMarking(ttn, format);
       await bot.sendDocument(chatId, document, {
-        caption: `Етикетка Нової пошти · ${order.ttn}`,
+        caption: `Етикетка Нової пошти · ${ttn}`,
         parse_mode: 'HTML'
       });
     } catch (error) {

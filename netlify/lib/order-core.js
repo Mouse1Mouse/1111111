@@ -35,6 +35,11 @@ export function parseAmount(value) {
   return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null;
 }
 
+export function parseTtnFromOrderCard(value) {
+  const match = String(value || '').match(/ТТН:\s*(\d{12,20})/iu);
+  return match?.[1] || '';
+}
+
 export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanText(value, 160));
 }

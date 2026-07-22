@@ -10,7 +10,8 @@ import {
   markNovaPayReceived,
   markPrepaymentReceived,
   markReceiptDone,
-  parseAmount
+  parseAmount,
+  parseTtnFromOrderCard
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
 import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
@@ -111,6 +112,11 @@ test('validates required customer and amount data', () => {
 
 test('escapes Telegram HTML', () => {
   assert.equal(escapeHtml('<MIVA & Co>'), '&lt;MIVA &amp; Co&gt;');
+});
+
+test('recovers a Nova Poshta TTN from a fresh Telegram order card', () => {
+  assert.equal(parseTtnFromOrderCard('🚚 ТТН: 20451493965058\n📌 Статус: потрібно пробити чек'), '20451493965058');
+  assert.equal(parseTtnFromOrderCard('🚚 ТТН: ще не додано'), '');
 });
 
 test('derives a stable Telegram webhook secret without exposing the token', () => {
