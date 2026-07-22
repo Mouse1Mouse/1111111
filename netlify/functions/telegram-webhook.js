@@ -123,12 +123,9 @@ function orderButtons(order) {
   }
   if (order.ttn && isNovaPoshtaConfigured()) {
     rows.push([
-      { text: '🖨 Етикетка A4', callback_data: `np_label:a4:${order.id}` },
-      { text: '🏷 100×100', callback_data: `np_label:zebra:${order.id}` }
+      { text: '🖨 A4 + опис', callback_data: `np_label:a4:${order.id}` },
+      { text: '🏷 100×100 + опис', callback_data: `np_label:zebra:${order.id}` }
     ]);
-  }
-  if (order.ttn) {
-    rows.push([{ text: '🏷 Опис комплекту 100×100', callback_data: `packing_label:${order.id}` }]);
   }
   if (order.status === ORDER_STATUSES.AWAITING_NOVAPAY) {
     rows.push([{ text: `✅ NovaPay ${money(order.codAmount)}`, callback_data: `novapay:${order.id}` }]);
@@ -1009,15 +1006,28 @@ async function handleCallback(bot, callback) {
       await bot.sendMessage(chatId, 'Для етикетки потрібна ТТН та підключений API Нової пошти.');
       return;
     }
-    await bot.sendMessage(chatId, '⏳ Готую PDF зі штрихкодом…');
+    const orderNumber = cleanText(order.customerOrderNumber || order.id, 40);
+    const safeFileNumber = orderNumber.replace(/[^\p{L}\p{N}._-]+/gu, '-');
+    await bot.sendMessage(chatId, `⏳ Готую пару етикеток для замовлення №${escapeHtml(orderNumber)}…`);
+    let officialSent = false;
     try {
       const document = await downloadNovaPoshtaMarking(ttn, format);
+      document.filename = `NovaPoshta-order-${safeFileNumber}-TTN-${ttn}-${format === 'zebra' ? '100x100' : 'A4'}.pdf`;
       await bot.sendDocument(chatId, document, {
-        caption: `Етикетка Нової пошти · ${ttn}`,
+        caption: `Оригінальна етикетка Нової пошти · Замовлення №${escapeHtml(orderNumber)} · ТТН ${ttn}`,
+        parse_mode: 'HTML'
+      });
+      officialSent = true;
+      const packingLabel = createPackingLabelDocument(order, ttn);
+      await bot.sendDocument(chatId, packingLabel, {
+        caption: `Етикетка MIVA · Замовлення №${escapeHtml(orderNumber)} · ТТН ${ttn} · друкуйте разом з оригінальною.`,
         parse_mode: 'HTML'
       });
     } catch (error) {
-      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
+      const message = officialSent
+        ? 'Оригінальну етикетку надіслано, але службову етикетку MIVA не вдалося надіслати. Спробуйте кнопку ще раз.'
+        : shipmentErrorText(error);
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(message)}`);
     }
     return;
   }
