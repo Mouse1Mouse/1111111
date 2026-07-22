@@ -129,7 +129,7 @@ export async function extractOrderFromImage({ bytes, mimeType, caption = '', ope
   if (!SUPPORTED_IMAGE_TYPES.has(mimeType)) throw new Error('unsupported_image_type');
   if (!bytes?.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('image_too_large');
 
-  const apiKey = process.env.OPENAI_API_KEY || process.env.NETLIFY_AI_GATEWAY_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1 || process.env.NETLIFY_AI_GATEWAY_KEY;
   const baseUrl = process.env.OPENAI_BASE_URL || process.env.NETLIFY_AI_GATEWAY_BASE_URL;
   if (!apiKey) throw new Error('ai_gateway_not_configured');
 

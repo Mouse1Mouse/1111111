@@ -18,6 +18,7 @@ The bot does **not** create a SOTA Kasa receipt automatically. A real fiscal ope
 An operator can send one Instagram order screenshot directly to the bot. The function downloads the image from Telegram into memory, sends it through the Netlify AI Gateway for structured vision extraction, and does not save the original image. The bot displays the extracted fields for confirmation and allows individual corrections before an order is stored. A missing prepayment is proposed as the normal 200 UAH amount and is clearly marked as an assumption.
 
 The default model is `gpt-5.6-luna`. It can be overridden with `ORDER_VISION_MODEL`. Netlify supplies AI Gateway credentials automatically on supported credit-based plans; an explicit OpenAI key is not required unless AI Gateway is disabled.
+For this deployment, `OPENAI_API_KEY1` is also accepted as a compatibility alias for `OPENAI_API_KEY`.
 
 ### Netlify environment variables
 

@@ -54,7 +54,9 @@ export const handler = async (event) => {
       lastError: info.last_error_message || null,
       operatorCount: operatorIds.length,
       selfTestStatus,
-      aiGatewayConfigured: Boolean(process.env.OPENAI_API_KEY || process.env.NETLIFY_AI_GATEWAY_KEY),
+      aiGatewayConfigured: Boolean(
+        process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1 || process.env.NETLIFY_AI_GATEWAY_KEY
+      ),
       visionModel: process.env.ORDER_VISION_MODEL || 'gpt-5.6-luna'
     });
   } catch {
