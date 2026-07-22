@@ -63,6 +63,13 @@ export function telegramClient(token) {
         show_alert: false
       });
     },
+    editMessageReplyMarkup(chatId, messageId, replyMarkup = { inline_keyboard: [] }) {
+      return call('editMessageReplyMarkup', {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: replyMarkup
+      });
+    },
     getWebhookInfo() {
       return call('getWebhookInfo', {});
     },

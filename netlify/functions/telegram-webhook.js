@@ -741,6 +741,7 @@ async function handleCallback(bot, callback) {
         field: 'prepay',
         updatedAt: new Date().toISOString()
       });
+      await bot.editMessageReplyMarkup(chatId, callback.message?.message_id).catch(() => {});
       await bot.sendMessage(chatId, AI_EDIT_FIELDS.prepay.prompt, { reply_markup: CANCEL_KEYBOARD });
       return;
     }
@@ -765,6 +766,7 @@ async function handleCallback(bot, callback) {
         updatedAt: new Date().toISOString()
       };
       await saveSession(chatId, updatedSession);
+      await bot.editMessageReplyMarkup(chatId, callback.message?.message_id).catch(() => {});
       await sendAiDraftPreview(bot, chatId, updatedSession);
     } catch {
       await bot.sendMessage(chatId, 'Передоплата має бути від 0 грн до повної суми замовлення включно. Оберіть потрібний варіант ще раз.');
@@ -804,6 +806,7 @@ async function handleCallback(bot, callback) {
       field: fieldCode,
       updatedAt: new Date().toISOString()
     });
+    await bot.editMessageReplyMarkup(chatId, callback.message?.message_id).catch(() => {});
     await bot.sendMessage(chatId, field.prompt, { reply_markup: CANCEL_KEYBOARD });
     return;
   }
@@ -822,6 +825,7 @@ async function handleCallback(bot, callback) {
     const order = createOrder(state.draft, { chatId });
     await saveOrder(order);
     await clearSession(chatId);
+    await bot.editMessageReplyMarkup(chatId, callback.message?.message_id).catch(() => {});
     await sendMainMenu(bot, chatId, '✅ Замовлення зі скріну збережено.');
     await sendOrder(bot, chatId, order);
     return;
