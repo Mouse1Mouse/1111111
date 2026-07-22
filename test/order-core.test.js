@@ -18,6 +18,7 @@ import {
   buildInternetDocumentPayload,
   formatNovaPoshtaDate,
   normalizeNovaPoshtaPhone,
+  novaPoshtaCall,
   parseSenderWarehouseSelection
 } from '../netlify/lib/nova-poshta.js';
 
@@ -196,6 +197,31 @@ test('parses a sender warehouse selected for the current shipment', () => {
     number: '12'
   });
   assert.equal(parseSenderWarehouseSelection('відділення'), null);
+});
+
+test('retries a temporary Nova Poshta API rate limit', async () => {
+  const originalFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = async () => {
+    requests += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => requests === 1
+        ? { success: false, data: [], errors: ['To many requests'], warnings: [] }
+        : { success: true, data: [{ Ref: 'warehouse-ref' }], errors: [], warnings: [] }
+    };
+  };
+  try {
+    const result = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {}, {
+      apiKey: 'test-key',
+      retryBaseDelayMs: 0
+    });
+    assert.equal(requests, 2);
+    assert.equal(result.data[0].Ref, 'warehouse-ref');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {

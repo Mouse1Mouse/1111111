@@ -2,6 +2,7 @@ import { cleanText, parseAmount } from './order-core.js';
 
 const API_ENDPOINT = 'https://api.novaposhta.ua/v2.0/json/';
 const MARKING_ENDPOINT = 'https://my.novaposhta.ua/orders';
+let apiQueue = Promise.resolve();
 
 function apiKey(value = process.env.NOVA_POSHTA_API_KEY) {
   const key = cleanText(value, 120);
@@ -45,18 +46,40 @@ export function formatNovaPoshtaDate(date = new Date()) {
   return `${values.day}.${values.month}.${values.year}`;
 }
 
-export async function novaPoshtaCall(modelName, calledMethod, methodProperties = {}, options = {}) {
+function isRateLimitResponse(result, data) {
+  const messages = [...(data?.errors || []), ...(data?.warnings || [])].join(' ');
+  return result.status === 429 || /to{1,2}\s+many\s+requests/i.test(messages);
+}
+
+async function novaPoshtaCallWithRetry(modelName, calledMethod, methodProperties = {}, options = {}) {
   const key = apiKey(options.apiKey);
-  const result = await fetch(API_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey: key, modelName, calledMethod, methodProperties }),
-    redirect: 'follow',
-    signal: AbortSignal.timeout(25000)
-  });
-  const data = await result.json().catch(() => ({}));
-  if (!result.ok || data?.success !== true) throw safeApiError(data, 'nova_poshta_api_failed');
-  return { data: Array.isArray(data.data) ? data.data : [], warnings: data.warnings || [] };
+  const retryBaseDelayMs = Number.isFinite(Number(options.retryBaseDelayMs))
+    ? Math.max(0, Number(options.retryBaseDelayMs))
+    : 1500;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const result = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: key, modelName, calledMethod, methodProperties }),
+      redirect: 'follow',
+      signal: AbortSignal.timeout(25000)
+    });
+    const data = await result.json().catch(() => ({}));
+    if (result.ok && data?.success === true) {
+      return { data: Array.isArray(data.data) ? data.data : [], warnings: data.warnings || [] };
+    }
+    if (!isRateLimitResponse(result, data)) throw safeApiError(data, 'nova_poshta_api_failed');
+    if (attempt === 3) throw safeApiError(data, 'nova_poshta_rate_limited');
+    const delayMs = retryBaseDelayMs * (2 ** attempt);
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  throw new Error('nova_poshta_api_failed');
+}
+
+export function novaPoshtaCall(modelName, calledMethod, methodProperties = {}, options = {}) {
+  const request = apiQueue.then(() => novaPoshtaCallWithRetry(modelName, calledMethod, methodProperties, options));
+  apiQueue = request.catch(() => {});
+  return request;
 }
 
 function selectedByRef(items, configuredRef) {

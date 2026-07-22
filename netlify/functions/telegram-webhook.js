@@ -145,6 +145,7 @@ function shipmentErrorText(error) {
     nova_poshta_destination_missing: 'У замовленні немає міста або відділення.',
     nova_poshta_warehouse_not_found: 'Не вдалося знайти це відділення Нової пошти. Виправте місто або відділення в замовленні.',
     nova_poshta_warehouse_ambiguous: 'Знайдено кілька схожих відділень. Уточніть номер або адресу відділення в замовленні.',
+    nova_poshta_rate_limited: 'Нова пошта тимчасово обмежила кількість API-запитів. Бот уже виконав автоматичні повтори.',
     invalid_recipient_phone: 'Телефон клієнта не підходить для створення ТТН.',
     nova_poshta_api_failed: 'Нова пошта відхилила запит. Перевірте API-ключ і дані бізнес-акаунта.',
     invalid_shipment_weight: 'Оберіть правильну вагу відправлення.',
@@ -514,7 +515,10 @@ async function handleSessionInput(bot, chatId, text, session) {
       await saveSession(chatId, updatedSession);
       await sendShipmentPreview(bot, chatId, shipment);
     } catch (error) {
-      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}\n\nСпробуйте інше місто або номер відділення.`);
+      const retryText = error?.message === 'nova_poshta_rate_limited'
+        ? 'Зачекайте 30 секунд і введіть те саме відділення ще раз.'
+        : 'Спробуйте інше місто або номер відділення.';
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}\n\n${retryText}`);
     }
     return;
   }
