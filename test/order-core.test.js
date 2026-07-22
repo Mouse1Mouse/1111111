@@ -19,7 +19,8 @@ import {
   formatNovaPoshtaDate,
   normalizeNovaPoshtaPhone,
   novaPoshtaCall,
-  parseSenderWarehouseSelection
+  parseSenderWarehouseSelection,
+  parseShipmentPreviewOptions
 } from '../netlify/lib/nova-poshta.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
@@ -197,6 +198,24 @@ test('parses a sender warehouse selected for the current shipment', () => {
     number: '12'
   });
   assert.equal(parseSenderWarehouseSelection('відділення'), null);
+});
+
+test('recovers confirmed shipment options from a Telegram preview', () => {
+  assert.deepEqual(parseShipmentPreviewOptions([
+    '🚚 Перевірка перед створенням ТТН',
+    '📦 Вага: 2.0 кг',
+    '📐 Розмір: 40×30×20 см',
+    '🚛 Доставку оплачує: клієнт',
+    '📤 Звідки: Нетішин, відділення №2'
+  ].join('\n')), {
+    senderWarehouse: { city: 'Нетішин', branch: 'Відділення №2', number: '2' },
+    weight: 2,
+    length: 40,
+    width: 30,
+    height: 20,
+    deliveryPayer: 'Recipient'
+  });
+  assert.equal(parseShipmentPreviewOptions('Вага: 2 кг'), null);
 });
 
 test('retries a temporary Nova Poshta API rate limit', async () => {

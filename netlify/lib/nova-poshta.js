@@ -123,6 +123,8 @@ async function resolveSender(options = {}) {
     contactRef: contact.Ref,
     phone: normalizeNovaPoshtaPhone(options.senderPhone || process.env.NOVA_POSHTA_SENDER_PHONE || contact.Phones),
     description: cleanText(sender.Description || [sender.LastName, sender.FirstName, sender.MiddleName].filter(Boolean).join(' '), 120),
+    cityDescription: cleanText(address.SettlementDescription || address.CityDescription, 120),
+    warehouseNumber: cleanText(address.Number, 20),
     addressDescription: cleanText(address.Description || address.ShortAddress, 160),
     contactDescription: cleanText(contact.Description, 120)
   };
@@ -151,6 +153,33 @@ export function parseSenderWarehouseSelection(value) {
   const city = text.slice(0, match.index).replace(/[\s,;:-]+$/u, '').trim();
   if (city.length < 2 || number === '0') return null;
   return { city, branch: `Відділення №${number}`, number };
+}
+
+export function parseShipmentPreviewOptions(value) {
+  const text = cleanText(value, 4000);
+  const senderMatch = text.match(/Звідки:\s*(.+?),\s*відділення\s*№\s*(\d+)/iu);
+  const weightMatch = text.match(/Вага:\s*(\d+(?:[.,]\d+)?)\s*кг/iu);
+  const dimensionsMatch = text.match(/Розмір:\s*(\d+(?:[.,]\d+)?)\s*[×xх]\s*(\d+(?:[.,]\d+)?)\s*[×xх]\s*(\d+(?:[.,]\d+)?)\s*см/iu);
+  const payerMatch = text.match(/Доставку\s+оплачує:\s*(MIVA|клієнт)/iu);
+  if (!senderMatch || !weightMatch || !dimensionsMatch || !payerMatch) return null;
+
+  const number = String(Number(senderMatch[2]));
+  const values = [weightMatch[1], dimensionsMatch[1], dimensionsMatch[2], dimensionsMatch[3]]
+    .map((item) => Number(item.replace(',', '.')));
+  if (number === '0' || values.some((item) => !Number.isFinite(item) || item <= 0)) return null;
+
+  return {
+    senderWarehouse: {
+      city: cleanText(senderMatch[1], 120),
+      branch: `Відділення №${number}`,
+      number
+    },
+    weight: values[0],
+    length: values[1],
+    width: values[2],
+    height: values[3],
+    deliveryPayer: payerMatch[1].toLocaleUpperCase('uk-UA') === 'MIVA' ? 'Sender' : 'Recipient'
+  };
 }
 
 function warehouseScore(warehouse, query, number) {

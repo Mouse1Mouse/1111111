@@ -22,6 +22,7 @@ import {
   downloadNovaPoshtaMarking,
   isNovaPoshtaConfigured,
   parseSenderWarehouseSelection,
+  parseShipmentPreviewOptions,
   prepareNovaPoshtaShipment
 } from '../lib/nova-poshta.js';
 import {
@@ -171,12 +172,15 @@ function shipmentPreviewHtml(shipment) {
     `💰 Оголошена вартість: <b>${money(shipment.totalAmount)}</b>`,
     `💵 Післяплата NovaPay: <b>${money(shipment.codAmount)}</b>`,
     `🚛 Доставку оплачує: <b>${shipment.deliveryPayer === 'Sender' ? 'MIVA' : 'клієнт'}</b>`,
+    shipment.sender.cityDescription && shipment.sender.warehouseNumber
+      ? `📤 Звідки: <b>${escapeHtml(shipment.sender.cityDescription)}, відділення №${escapeHtml(shipment.sender.warehouseNumber)}</b>`
+      : null,
     `🏠 Відправник: ${escapeHtml(shipment.sender.description)}, ${escapeHtml(shipment.sender.addressDescription)}`,
     '',
     shipment.weight
       ? '⚠️ Після підтвердження буде створено справжню ТТН у бізнес-кабінеті Нової пошти.'
       : '❗ Спочатку оберіть фактичну вагу запакованого замовлення.'
-  ].join('\n');
+  ].filter((line) => line !== null).join('\n');
 }
 
 function shipmentPreviewKeyboard(shipment) {
@@ -918,19 +922,39 @@ async function handleCallback(bot, callback) {
 
   if (action === 'np_create') {
     const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
-    if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id || !session.shipment?.weight) {
-      await bot.sendMessage(chatId, 'Підготовка ТТН уже неактуальна або не вибрана вага. Почніть ще раз із картки замовлення.');
-      return;
-    }
     if (order.ttn) {
       await clearSession(chatId);
       await bot.sendMessage(chatId, `У замовленні вже є ТТН <b>${escapeHtml(order.ttn)}</b>. Нову ТТН не створено.`);
       return;
     }
-    await saveSession(chatId, { ...session, mode: 'creating_nova_poshta_ttn', updatedAt: new Date().toISOString() });
+    let shipment = session?.mode === 'confirm_nova_poshta_ttn' && session.orderId === id
+      ? session.shipment
+      : null;
+    if (!shipment?.weight) {
+      const recoveredOptions = parseShipmentPreviewOptions(callback.message?.text);
+      if (!recoveredOptions) {
+        await bot.sendMessage(chatId, 'Підготовка ТТН уже неактуальна або в цій старій картці немає всіх параметрів. Відкрийте замовлення й натисніть «Створити ТТН автоматично» ще раз.');
+        return;
+      }
+      await bot.sendMessage(chatId, '⏳ Відновлюю параметри з картки та ще раз перевіряю їх у Новій пошті…');
+      try {
+        shipment = await prepareNovaPoshtaShipment(order, recoveredOptions);
+      } catch (error) {
+        await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
+        return;
+      }
+    }
+    const activeSession = {
+      ...(session || {}),
+      orderId: id,
+      shipment,
+      mode: 'creating_nova_poshta_ttn',
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, activeSession);
     await bot.sendMessage(chatId, '⏳ Створюю ТТН у бізнес-кабінеті Нової пошти…');
     try {
-      const waybill = await createNovaPoshtaWaybill(session.shipment);
+      const waybill = await createNovaPoshtaWaybill(shipment);
       const attached = attachTtn(order, waybill.ttn);
       const updated = {
         ...attached,
@@ -949,7 +973,7 @@ async function handleCallback(bot, callback) {
       ].filter(Boolean).join('\n'));
       await sendOrder(bot, chatId, updated);
     } catch (error) {
-      await saveSession(chatId, { ...session, mode: 'confirm_nova_poshta_ttn', updatedAt: new Date().toISOString() });
+      await saveSession(chatId, { ...activeSession, mode: 'confirm_nova_poshta_ttn', updatedAt: new Date().toISOString() });
       await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
     }
     return;
