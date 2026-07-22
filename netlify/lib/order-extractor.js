@@ -118,7 +118,7 @@ export function normalizeExtractedDraft(result) {
   if (
     draft.prepaymentAmount === null ||
     draft.prepaymentAmount < 0 ||
-    (draft.totalAmount !== null && draft.prepaymentAmount >= draft.totalAmount)
+    (draft.totalAmount !== null && draft.prepaymentAmount > draft.totalAmount)
   ) {
     missingFields.push('prepaymentAmount');
   }
@@ -140,7 +140,7 @@ export function applyPrepaymentChoice(draft, value) {
   if (totalAmount === null && codAmount !== null) {
     totalAmount = Math.round((codAmount + prepaymentAmount) * 100) / 100;
   }
-  if (totalAmount !== null && prepaymentAmount >= totalAmount) throw new Error('invalid_prepayment_choice');
+  if (totalAmount !== null && prepaymentAmount > totalAmount) throw new Error('invalid_prepayment_choice');
   return { ...draft, prepaymentAmount, totalAmount };
 }
 

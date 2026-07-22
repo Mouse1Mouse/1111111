@@ -65,6 +65,32 @@ test('runs the expected prepayment, TTN, NovaPay and receipt lifecycle', () => {
   assert.equal(closed.status, ORDER_STATUSES.RECEIPT_DONE);
 });
 
+test('supports a fully paid order without a NovaPay balance', () => {
+  const normalized = normalizeExtractedDraft(draft({
+    totalAmount: 2150,
+    prepaymentAmount: 2150,
+    codAmount: 0
+  }));
+  assert.equal(normalized.needsPrepaymentChoice, false);
+  assert.equal(normalized.missingFields.includes('prepaymentAmount'), false);
+
+  const selected = applyPrepaymentChoice({ totalAmount: 2150, codAmount: 0 }, 2150);
+  assert.equal(selected.prepaymentAmount, 2150);
+
+  const created = createOrder(draft({ totalAmount: '2150', prepaymentAmount: '2150' }), {
+    now: NOW,
+    chatId: '123'
+  });
+  assert.equal(created.codAmount, 0);
+  assert.equal(created.status, ORDER_STATUSES.AWAITING_PREPAYMENT);
+
+  const prepaid = markPrepaymentReceived(created, 2150);
+  assert.equal(prepaid.status, ORDER_STATUSES.READY_TO_SHIP);
+
+  const shipped = attachTtn(prepaid, '20451234567890');
+  assert.equal(shipped.status, ORDER_STATUSES.READY_FOR_RECEIPT);
+});
+
 test('does not accept a wrong payment or NovaPay confirmation without a TTN', () => {
   const created = createOrder(draft(), { now: NOW, chatId: '123' });
   assert.throws(() => markPrepaymentReceived(created, 199), /Expected prepayment/);
@@ -197,4 +223,29 @@ test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
     volumetricHeight: '20',
     weight: '2'
   }]);
+
+  const fullyPaidPayload = buildInternetDocumentPayload({
+    recipientName: 'Олена Коваль',
+    recipientPhone: '380671234567',
+    recipientCityName: 'Київ',
+    recipientArea: 'Київська область',
+    recipientRegion: '',
+    recipientSettlementType: 'місто',
+    warehouseNumber: '12',
+    totalAmount: 2150,
+    codAmount: 0,
+    weight: 2,
+    dimensions: { length: 40, width: 30, height: 20 },
+    seatsAmount: 1,
+    description: 'Постільна білизна',
+    deliveryPayer: 'Recipient',
+    sender: {
+      cityRef: 'city-ref',
+      ref: 'sender-ref',
+      addressRef: 'address-ref',
+      contactRef: 'contact-ref',
+      phone: '380501234567'
+    }
+  }, new Date('2026-07-22T10:00:00.000Z'));
+  assert.equal('BackwardDeliveryData' in fullyPaidPayload, false);
 });

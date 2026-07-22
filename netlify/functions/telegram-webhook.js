@@ -79,6 +79,25 @@ async function sendMainMenu(bot, chatId, text = HELP_TEXT) {
   return bot.sendMessage(chatId, text, { reply_markup: MAIN_KEYBOARD });
 }
 
+const INPUT_SESSION_MODES = new Set([
+  'new_order',
+  'await_np_weight',
+  'await_np_dimensions',
+  'await_ai_edit',
+  'await_ttn',
+  'await_receipt'
+]);
+
+async function getSessionForInput(chatId) {
+  let session = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    session = await getSession(chatId);
+    if (session && INPUT_SESSION_MODES.has(session.mode)) return session;
+    if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return session;
+}
+
 function orderButtons(order) {
   const rows = [];
   if (order.status === ORDER_STATUSES.AWAITING_PREPAYMENT) {
@@ -234,9 +253,9 @@ const STEPS = {
     prompt: '6/7 Введіть передоплату на IBAN. Зазвичай 200:',
     validate: (value, draft) => {
       const amount = parseAmount(value);
-      return amount !== null && amount >= 0 && amount < parseAmount(draft.totalAmount);
+      return amount !== null && amount >= 0 && amount <= parseAmount(draft.totalAmount);
     },
-    error: 'Для схеми з NovaPay передоплата має бути від 0 грн і меншою за повну суму замовлення.',
+    error: 'Передоплата має бути від 0 грн до повної суми замовлення включно.',
     next: 'ttn'
   },
   ttn: {
@@ -280,7 +299,7 @@ const AI_EDIT_FIELDS = Object.freeze({
       const total = parseAmount(draft?.totalAmount);
       const cod = parseAmount(draft?.codAmount);
       return amount !== null && amount >= 0 && (
-        (total !== null && amount < total) ||
+        (total !== null && amount <= total) ||
         (total === null && cod !== null && cod > 0)
       );
     }
@@ -359,6 +378,7 @@ function aiConfirmationKeyboard(session) {
   if (needsPrepaymentChoice) {
     rows.push([{ text: '🚫 Передоплати немає', callback_data: `ai_prepay:none:${session.draft.id}` }]);
     rows.push([{ text: '💵 Передоплата 200 грн', callback_data: `ai_prepay:200:${session.draft.id}` }]);
+    rows.push([{ text: '✅ Оплачено повністю', callback_data: `ai_prepay:full:${session.draft.id}` }]);
     rows.push([{ text: '✏️ Інша сума', callback_data: `ai_prepay:other:${session.draft.id}` }]);
   }
   if (!missingFields.length) {
@@ -551,8 +571,7 @@ async function handleSessionInput(bot, chatId, text, session) {
     return;
   }
 
-  await clearSession(chatId);
-  await sendMainMenu(bot, chatId, 'Попередню дію скинуто. Виберіть потрібну дію:');
+  await sendMainMenu(bot, chatId, 'Не вдалося зчитати поточний крок. Дані не видалено — повторіть останню дію кнопкою.');
 }
 
 async function showOrders(bot, chatId) {
@@ -623,7 +642,7 @@ async function handleMessage(bot, message) {
     return;
   }
 
-  const session = await getSession(chatId);
+  const session = await getSessionForInput(chatId);
   if (session) {
     await handleSessionInput(bot, chatId, text, session);
     return;
@@ -725,7 +744,13 @@ async function handleCallback(bot, callback) {
       await bot.sendMessage(chatId, AI_EDIT_FIELDS.prepay.prompt, { reply_markup: CANCEL_KEYBOARD });
       return;
     }
-    const selectedAmount = choice === 'none' ? 0 : choice === '200' ? 200 : null;
+    const selectedAmount = choice === 'none'
+      ? 0
+      : choice === '200'
+        ? 200
+        : choice === 'full'
+          ? parseAmount(session.draft.totalAmount)
+          : null;
     if (selectedAmount === null) {
       await bot.sendMessage(chatId, 'Не вдалося прочитати вибір. Натисніть одну з кнопок ще раз.');
       return;
@@ -742,7 +767,7 @@ async function handleCallback(bot, callback) {
       await saveSession(chatId, updatedSession);
       await sendAiDraftPreview(bot, chatId, updatedSession);
     } catch {
-      await bot.sendMessage(chatId, 'Передоплата має бути меншою за повну суму замовлення. Оберіть «Інша сума» та введіть правильне значення.');
+      await bot.sendMessage(chatId, 'Передоплата має бути від 0 грн до повної суми замовлення включно. Оберіть потрібний варіант ще раз.');
     }
     return;
   }

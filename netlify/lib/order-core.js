@@ -77,6 +77,7 @@ export function deriveStatus(order) {
     return ORDER_STATUSES.AWAITING_PREPAYMENT;
   }
   if (!order.ttn) return ORDER_STATUSES.READY_TO_SHIP;
+  if (order.codAmount === 0) return ORDER_STATUSES.READY_FOR_RECEIPT;
   return ORDER_STATUSES.AWAITING_NOVAPAY;
 }
 
@@ -204,7 +205,9 @@ export function formatOrderHtml(order, { receiptInstructions = false } = {}) {
     `🛏 ${escapeHtml(order.itemsSummary)}`,
     `💰 Повна сума: <b>${order.totalAmount.toFixed(2)} грн</b>`,
     `🏦 Передоплата IBAN: <b>${order.prepaymentAmount.toFixed(2)} грн</b> ${order.prepaymentReceivedAt ? '✅' : '⏳'}`,
-    `📦 Залишок NovaPay: <b>${order.codAmount.toFixed(2)} грн</b> ${order.novaPayReceivedAt ? '✅' : '⏳'}`,
+    order.codAmount > 0
+      ? `📦 Залишок NovaPay: <b>${order.codAmount.toFixed(2)} грн</b> ${order.novaPayReceivedAt ? '✅' : '⏳'}`
+      : '📦 Післяплата NovaPay: <b>немає</b> ✅',
     `🚚 ТТН: ${ttn}`,
     `📌 Статус: <b>${escapeHtml(statusLabel(order.status))}</b>`
   ];
