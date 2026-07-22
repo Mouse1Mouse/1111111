@@ -1,4 +1,4 @@
-import { deriveWebhookSecret, telegramClient } from '../lib/telegram-client.js';
+import { deriveWebhookSecret, parseChatIds, telegramClient } from '../lib/telegram-client.js';
 
 const response = (statusCode, body) => ({
   statusCode,
@@ -21,7 +21,16 @@ export const handler = async (event) => {
   try {
     const bot = telegramClient(token);
     await bot.setWebhook(`${siteUrl}/.netlify/functions/telegram-webhook`, webhookSecret);
-    return response(200, { ok: true, webhook: `${siteUrl}/.netlify/functions/telegram-webhook` });
+    const info = await bot.getWebhookInfo();
+    const operatorCount = parseChatIds(process.env.TELEGRAM_OPERATOR_CHAT_IDS || process.env.TELEGRAM_CHAT_IDS).length;
+    return response(200, {
+      ok: true,
+      webhook: info.url,
+      pendingUpdates: info.pending_update_count || 0,
+      lastErrorAt: info.last_error_date || null,
+      lastError: info.last_error_message || null,
+      operatorCount
+    });
   } catch {
     return response(502, { ok: false, error: 'Telegram registration failed' });
   }

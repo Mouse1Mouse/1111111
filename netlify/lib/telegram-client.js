@@ -50,6 +50,9 @@ export function telegramClient(token) {
         show_alert: false
       });
     },
+    getWebhookInfo() {
+      return call('getWebhookInfo', {});
+    },
     setWebhook(url, secretToken) {
       return call('setWebhook', {
         url,
