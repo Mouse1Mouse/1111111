@@ -43,6 +43,32 @@ function money(value) {
   return `${Number(value).toFixed(2)} грн`;
 }
 
+const MENU_BUTTONS = Object.freeze({
+  NEW: '➕ Нове замовлення',
+  ORDERS: '📋 Активні замовлення',
+  HELP: 'ℹ️ Допомога',
+  CANCEL: '❌ Скасувати'
+});
+
+const MAIN_KEYBOARD = Object.freeze({
+  keyboard: [
+    [{ text: MENU_BUTTONS.NEW }, { text: MENU_BUTTONS.ORDERS }],
+    [{ text: MENU_BUTTONS.HELP }]
+  ],
+  resize_keyboard: true,
+  is_persistent: true
+});
+
+const CANCEL_KEYBOARD = Object.freeze({
+  keyboard: [[{ text: MENU_BUTTONS.CANCEL }]],
+  resize_keyboard: true,
+  is_persistent: true
+});
+
+async function sendMainMenu(bot, chatId, text = HELP_TEXT) {
+  return bot.sendMessage(chatId, text, { reply_markup: MAIN_KEYBOARD });
+}
+
 function orderButtons(order) {
   const rows = [];
   if (order.status === ORDER_STATUSES.AWAITING_PREPAYMENT) {
@@ -133,14 +159,14 @@ async function startNewOrder(bot, chatId) {
     updatedAt: new Date().toISOString()
   };
   await saveSession(chatId, session);
-  await bot.sendMessage(chatId, STEPS.customerName.prompt);
+  await bot.sendMessage(chatId, STEPS.customerName.prompt, { reply_markup: CANCEL_KEYBOARD });
 }
 
 async function handleNewOrderStep(bot, chatId, text, session) {
   const config = STEPS[session.step];
   if (!config) {
     await clearSession(chatId);
-    await bot.sendMessage(chatId, 'Сценарій скинуто. Натисніть /new, щоб почати знову.');
+    await sendMainMenu(bot, chatId, 'Сценарій скинуто. Виберіть потрібну дію:');
     return;
   }
 
@@ -186,6 +212,7 @@ async function handleSessionInput(bot, chatId, text, session) {
     const updated = attachTtn(order, text);
     await saveOrder(updated);
     await clearSession(chatId);
+    await sendMainMenu(bot, chatId, '✅ ТТН додано.');
     await sendOrder(bot, chatId, updated);
     return;
   }
@@ -196,18 +223,18 @@ async function handleSessionInput(bot, chatId, text, session) {
     const updated = markReceiptDone(order, text);
     await saveOrder(updated);
     await clearSession(chatId);
-    await bot.sendMessage(chatId, `✅ Замовлення закрито. Записано чек <b>${escapeHtml(updated.receiptNumber)}</b>.`);
+    await sendMainMenu(bot, chatId, `✅ Замовлення закрито. Записано чек <b>${escapeHtml(updated.receiptNumber)}</b>.`);
     return;
   }
 
   await clearSession(chatId);
-  await bot.sendMessage(chatId, 'Попередню дію скинуто. Скористайтеся /help.');
+  await sendMainMenu(bot, chatId, 'Попередню дію скинуто. Виберіть потрібну дію:');
 }
 
 async function showOrders(bot, chatId) {
   const orders = await listOrders({ limit: 20 });
   if (!orders.length) {
-    await bot.sendMessage(chatId, 'Активних замовлень немає. Для нового натисніть /new.');
+    await sendMainMenu(bot, chatId, 'Активних замовлень немає. Можна створити нове:');
     return;
   }
   const lines = orders.map((order) => [
@@ -215,7 +242,9 @@ async function showOrders(bot, chatId) {
     `${money(order.totalAmount)} · ${statusLabel(order.status)}`,
     `/order_${order.id}`
   ].join('\n'));
-  await bot.sendMessage(chatId, `<b>Активні замовлення</b>\n\n${lines.join('\n\n')}`);
+  await bot.sendMessage(chatId, `<b>Активні замовлення</b>\n\n${lines.join('\n\n')}`, {
+    reply_markup: MAIN_KEYBOARD
+  });
 }
 
 function extractOrderId(text) {
@@ -237,21 +266,21 @@ async function handleMessage(bot, message) {
   const text = cleanText(message.text, 1500);
   if (!text) return;
 
-  if (/^\/start(?:@\w+)?$/i.test(text) || /^\/help(?:@\w+)?$/i.test(text)) {
-    await bot.sendMessage(chatId, HELP_TEXT);
+  if (/^\/start(?:@\w+)?$/i.test(text) || /^\/help(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.HELP) {
+    await sendMainMenu(bot, chatId);
     return;
   }
-  if (/^\/new(?:@\w+)?$/i.test(text)) {
+  if (/^\/new(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.NEW) {
     await startNewOrder(bot, chatId);
     return;
   }
-  if (/^\/orders(?:@\w+)?$/i.test(text)) {
+  if (/^\/orders(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.ORDERS) {
     await showOrders(bot, chatId);
     return;
   }
-  if (/^\/cancel(?:@\w+)?$/i.test(text)) {
+  if (/^\/cancel(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.CANCEL) {
     await clearSession(chatId);
-    await bot.sendMessage(chatId, 'Поточне введення скасовано.');
+    await sendMainMenu(bot, chatId, 'Поточне введення скасовано.');
     return;
   }
   if (/^\/order(?:@\w+)?[ _]+/i.test(text)) {
@@ -264,7 +293,7 @@ async function handleMessage(bot, message) {
     await handleSessionInput(bot, chatId, text, session);
     return;
   }
-  await bot.sendMessage(chatId, 'Не розумію команду. Натисніть /help.');
+  await sendMainMenu(bot, chatId, 'Не розумію повідомлення. Виберіть дію кнопкою:');
 }
 
 async function handleCallback(bot, callback) {
@@ -274,7 +303,7 @@ async function handleCallback(bot, callback) {
 
   if (action === 'discard') {
     await clearSession(chatId);
-    await bot.sendMessage(chatId, 'Замовлення не збережено.');
+    await sendMainMenu(bot, chatId, 'Замовлення не збережено.');
     return;
   }
 
@@ -287,7 +316,7 @@ async function handleCallback(bot, callback) {
     const existing = await getOrder(id);
     const order = existing || await saveOrder(session.draft);
     await clearSession(chatId);
-    await bot.sendMessage(chatId, '✅ Замовлення збережено.');
+    await sendMainMenu(bot, chatId, '✅ Замовлення збережено.');
     await sendOrder(bot, chatId, order);
     return;
   }
@@ -307,7 +336,7 @@ async function handleCallback(bot, callback) {
   }
   if (action === 'ttn') {
     await saveSession(chatId, { mode: 'await_ttn', orderId: id, updatedAt: new Date().toISOString() });
-    await bot.sendMessage(chatId, `Введіть ТТН для <b>${id}</b>:`);
+    await bot.sendMessage(chatId, `Введіть ТТН для <b>${id}</b>:`, { reply_markup: CANCEL_KEYBOARD });
     return;
   }
   if (action === 'novapay') {
@@ -319,7 +348,9 @@ async function handleCallback(bot, callback) {
   }
   if (action === 'receipt') {
     await saveSession(chatId, { mode: 'await_receipt', orderId: id, updatedAt: new Date().toISOString() });
-    await bot.sendMessage(chatId, `Введіть фіскальний номер чека СОТА для <b>${id}</b>:`);
+    await bot.sendMessage(chatId, `Введіть фіскальний номер чека СОТА для <b>${id}</b>:`, {
+      reply_markup: CANCEL_KEYBOARD
+    });
   }
 }
 
