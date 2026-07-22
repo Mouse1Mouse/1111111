@@ -18,9 +18,8 @@ The bot does **not** create a SOTA Kasa receipt automatically. A real fiscal ope
 - `TELEGRAM_BOT_TOKEN` — existing BotFather token.
 - `TELEGRAM_CHAT_IDS` — existing operator chat ID list; JSON array or comma-separated values.
 - `TELEGRAM_OPERATOR_CHAT_IDS` — optional dedicated operator allowlist; falls back to `TELEGRAM_CHAT_IDS`.
-- `TELEGRAM_WEBHOOK_SECRET` — a random value containing only letters, numbers, `_` and `-`.
-- `TELEGRAM_SETUP_SECRET` — a separate random value used once to register the webhook.
+- `TELEGRAM_WEBHOOK_SECRET` — optional override; by default a stable secret is derived from the existing bot token without exposing it.
 
-After deployment, send a protected `POST` request to `/.netlify/functions/telegram-register` with the `x-setup-secret` header. The setup endpoint never returns the Telegram token or either secret.
+After deployment, send a `POST` request to `/.netlify/functions/telegram-register`. The endpoint can only register the fixed webhook URL belonging to the current Netlify site. It never accepts another URL and never returns the Telegram token or derived secret.
 
 Run local checks with `npm test`, `npm run lint`, and `npm run build`.

@@ -1,3 +1,12 @@
+import { createHash } from 'node:crypto';
+
+export function deriveWebhookSecret(token) {
+  if (!token) throw new Error('Telegram token is not configured');
+  return createHash('sha256')
+    .update(`miva-telegram-webhook:${token}`)
+    .digest('base64url');
+}
+
 export function parseChatIds(value) {
   if (!value) return [];
   try {

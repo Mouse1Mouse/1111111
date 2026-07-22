@@ -25,7 +25,7 @@ import {
   saveOrder,
   saveSession
 } from '../lib/order-store.js';
-import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
+import { deriveWebhookSecret, parseChatIds, telegramClient } from '../lib/telegram-client.js';
 
 const jsonResponse = (statusCode, body) => ({
   statusCode,
@@ -326,7 +326,7 @@ async function handleCallback(bot, callback) {
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { ok: false });
 
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET || deriveWebhookSecret(process.env.TELEGRAM_BOT_TOKEN);
   const receivedSecret = event.headers?.['x-telegram-bot-api-secret-token'] || event.headers?.['X-Telegram-Bot-Api-Secret-Token'];
   if (!secret || !safeEqual(receivedSecret, secret)) return jsonResponse(401, { ok: false });
 

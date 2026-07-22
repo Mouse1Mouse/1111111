@@ -12,6 +12,7 @@ import {
   markReceiptDone,
   parseAmount
 } from '../netlify/lib/order-core.js';
+import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
 
@@ -75,4 +76,12 @@ test('validates required customer and amount data', () => {
 
 test('escapes Telegram HTML', () => {
   assert.equal(escapeHtml('<MIVA & Co>'), '&lt;MIVA &amp; Co&gt;');
+});
+
+test('derives a stable Telegram webhook secret without exposing the token', () => {
+  const token = '123456:TEST_TOKEN_VALUE';
+  const secret = deriveWebhookSecret(token);
+  assert.match(secret, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(secret, deriveWebhookSecret(token));
+  assert.equal(secret.includes(token), false);
 });
