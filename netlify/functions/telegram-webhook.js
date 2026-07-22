@@ -16,7 +16,7 @@ import {
   parseAmount,
   statusLabel
 } from '../lib/order-core.js';
-import { extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
+import { applyPrepaymentChoice, extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
 import {
   clearSession,
   claimUpdate,
@@ -185,7 +185,15 @@ const AI_EDIT_FIELDS = Object.freeze({
     key: 'prepaymentAmount',
     label: 'Передоплата',
     prompt: STEPS.prepaymentAmount.prompt,
-    validate: STEPS.prepaymentAmount.validate
+    validate: (value, draft) => {
+      const amount = parseAmount(value);
+      const total = parseAmount(draft?.totalAmount);
+      const cod = parseAmount(draft?.codAmount);
+      return amount !== null && amount >= 0 && (
+        (total !== null && amount < total) ||
+        (total === null && cod !== null && cod > 0)
+      );
+    }
   },
   ttn: { key: 'ttn', label: 'ТТН', prompt: STEPS.ttn.prompt, validate: STEPS.ttn.validate }
 });
@@ -214,13 +222,21 @@ function aiDraftState(session) {
   return {
     draft: { ...session.draft, ...normalized.draft },
     missingFields: normalized.missingFields,
-    warnings: [...new Set([...(session.warnings || []), ...normalized.warnings])]
+    warnings: [...new Set([...(session.warnings || []), ...normalized.warnings])],
+    needsPrepaymentChoice: normalized.needsPrepaymentChoice
   };
 }
 
+function warningsAfterPrepaymentChoice(warnings = []) {
+  return warnings.filter((warning) => warning !== 'Передоплату не видно — оберіть, чи вона є.');
+}
+
 function formatAiDraftHtml(session) {
-  const { draft, missingFields, warnings } = aiDraftState(session);
+  const { draft, missingFields, warnings, needsPrepaymentChoice } = aiDraftState(session);
   const amount = (value) => value === null || value === undefined ? 'не розпізнано' : `${Number(value).toFixed(2)} грн`;
+  const novaPayAmount = draft.totalAmount !== null && draft.prepaymentAmount !== null
+    ? Math.round((Number(draft.totalAmount) - Number(draft.prepaymentAmount)) * 100) / 100
+    : null;
   const lines = [
     '<b>📸 Розпізнане замовлення</b>',
     '',
@@ -233,7 +249,8 @@ function formatAiDraftHtml(session) {
     '',
     `<b>Товари:</b> ${escapeHtml(draft.itemsSummary || 'не розпізнано')}`,
     `💰 Повна сума: <b>${amount(draft.totalAmount)}</b>`,
-    `🏦 Передоплата IBAN: <b>${amount(draft.prepaymentAmount)}</b>`,
+    `🏦 Передоплата IBAN: <b>${needsPrepaymentChoice ? 'потрібно обрати' : amount(draft.prepaymentAmount)}</b>`,
+    `📮 Залишок NovaPay: <b>${novaPayAmount === null ? 'буде пораховано після вибору' : amount(novaPayAmount)}</b>`,
     `🚚 ТТН: ${escapeHtml(draft.ttn === '-' ? 'ще немає' : draft.ttn)}`
   ];
 
@@ -247,8 +264,13 @@ function formatAiDraftHtml(session) {
 }
 
 function aiConfirmationKeyboard(session) {
-  const { missingFields } = aiDraftState(session);
+  const { missingFields, needsPrepaymentChoice } = aiDraftState(session);
   const rows = [];
+  if (needsPrepaymentChoice) {
+    rows.push([{ text: '🚫 Передоплати немає', callback_data: `ai_prepay:none:${session.draft.id}` }]);
+    rows.push([{ text: '💵 Передоплата 200 грн', callback_data: `ai_prepay:200:${session.draft.id}` }]);
+    rows.push([{ text: '✏️ Інша сума', callback_data: `ai_prepay:other:${session.draft.id}` }]);
+  }
   if (!missingFields.length) {
     rows.push([{ text: '✅ Все правильно — зберегти', callback_data: `ai_save:${session.draft.id}` }]);
   }
@@ -361,11 +383,17 @@ async function handleSessionInput(bot, chatId, text, session) {
     let storedValue = value;
     if (['instagramHandle', 'city', 'branch'].includes(config.key) && value === '-') storedValue = '';
     if (['totalAmount', 'prepaymentAmount'].includes(config.key)) storedValue = parseAmount(value);
+    const updatedDraft = config.key === 'prepaymentAmount'
+      ? applyPrepaymentChoice(session.draft, storedValue)
+      : { ...session.draft, [config.key]: storedValue };
     const updatedSession = {
       ...session,
       mode: 'confirm_ai_order',
       field: null,
-      draft: { ...session.draft, [config.key]: storedValue },
+      draft: updatedDraft,
+      warnings: config.key === 'prepaymentAmount'
+        ? warningsAfterPrepaymentChoice(session.warnings)
+        : session.warnings,
       updatedAt: new Date().toISOString()
     };
     await saveSession(chatId, updatedSession);
@@ -488,6 +516,45 @@ async function handleCallback(bot, callback) {
   if (action === 'discard') {
     await clearSession(chatId);
     await sendMainMenu(bot, chatId, 'Замовлення не збережено.');
+    return;
+  }
+
+  if (action === 'ai_prepay') {
+    const choice = callbackParts[1];
+    const session = await getSession(chatId);
+    if (!['confirm_ai_order', 'await_ai_edit'].includes(session?.mode) || session.draft?.id !== id) {
+      await bot.sendMessage(chatId, 'Цей скрін уже неактуальний. Надішліть його ще раз.');
+      return;
+    }
+    if (choice === 'other') {
+      await saveSession(chatId, {
+        ...session,
+        mode: 'await_ai_edit',
+        field: 'prepay',
+        updatedAt: new Date().toISOString()
+      });
+      await bot.sendMessage(chatId, AI_EDIT_FIELDS.prepay.prompt, { reply_markup: CANCEL_KEYBOARD });
+      return;
+    }
+    const selectedAmount = choice === 'none' ? 0 : choice === '200' ? 200 : null;
+    if (selectedAmount === null) {
+      await bot.sendMessage(chatId, 'Не вдалося прочитати вибір. Натисніть одну з кнопок ще раз.');
+      return;
+    }
+    try {
+      const updatedSession = {
+        ...session,
+        mode: 'confirm_ai_order',
+        field: null,
+        draft: applyPrepaymentChoice(session.draft, selectedAmount),
+        warnings: warningsAfterPrepaymentChoice(session.warnings),
+        updatedAt: new Date().toISOString()
+      };
+      await saveSession(chatId, updatedSession);
+      await sendAiDraftPreview(bot, chatId, updatedSession);
+    } catch {
+      await bot.sendMessage(chatId, 'Передоплата має бути меншою за повну суму замовлення. Оберіть «Інша сума» та введіть правильне значення.');
+    }
     return;
   }
 

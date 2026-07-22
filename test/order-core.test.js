@@ -13,7 +13,7 @@ import {
   parseAmount
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
-import { normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
+import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
 
@@ -87,7 +87,7 @@ test('derives a stable Telegram webhook secret without exposing the token', () =
   assert.equal(secret.includes(token), false);
 });
 
-test('normalizes a screenshot extraction and applies the standard 200 UAH prepayment', () => {
+test('asks for a prepayment choice when it is absent from the screenshot', () => {
   const result = normalizeExtractedDraft({
     customerName: 'Олена',
     instagramHandle: '@olena',
@@ -102,12 +102,13 @@ test('normalizes a screenshot extraction and applies the standard 200 UAH prepay
     ttn: '',
     confidence: 0.91
   });
-  assert.equal(result.draft.prepaymentAmount, 200);
-  assert.deepEqual(result.missingFields, []);
+  assert.equal(result.draft.prepaymentAmount, null);
+  assert.equal(result.needsPrepaymentChoice, true);
+  assert.deepEqual(result.missingFields, ['prepaymentAmount']);
   assert.equal(result.warnings.length, 1);
 });
 
-test('calculates the full order value when a screenshot only shows the NovaPay balance', () => {
+test('calculates the full order value after choosing a prepayment for a visible NovaPay balance', () => {
   const result = normalizeExtractedDraft({
     customerName: 'Олена',
     phone: '+380671234567',
@@ -117,10 +118,20 @@ test('calculates the full order value when a screenshot only shows the NovaPay b
     codAmount: 1450,
     confidence: 0.85
   });
-  assert.equal(result.draft.prepaymentAmount, 200);
-  assert.equal(result.draft.totalAmount, 1650);
-  assert.deepEqual(result.missingFields, []);
-  assert.equal(result.warnings.length, 2);
+  assert.equal(result.draft.prepaymentAmount, null);
+  assert.equal(result.draft.totalAmount, null);
+  assert.equal(result.needsPrepaymentChoice, true);
+  assert.deepEqual(result.missingFields, ['prepaymentAmount']);
+
+  const updated = applyPrepaymentChoice(result.draft, 200);
+  assert.equal(updated.prepaymentAmount, 200);
+  assert.equal(updated.totalAmount, 1650);
+});
+
+test('supports an order without a prepayment and uses the visible NovaPay balance as its total', () => {
+  const updated = applyPrepaymentChoice({ totalAmount: null, codAmount: 1700 }, 0);
+  assert.equal(updated.prepaymentAmount, 0);
+  assert.equal(updated.totalAmount, 1700);
 });
 
 test('keeps uncertain screenshot fields blocked until corrected', () => {

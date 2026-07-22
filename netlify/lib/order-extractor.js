@@ -77,12 +77,12 @@ export function normalizeExtractedDraft(result) {
   const totalAmount = parseAmount(result?.totalAmount);
   const codAmount = parseAmount(result?.codAmount);
   let normalizedTotal = totalAmount;
-  let prepaymentAmount = parseAmount(result?.prepaymentAmount);
+  const prepaymentAmount = parseAmount(result?.prepaymentAmount);
   const warnings = [];
+  const needsPrepaymentChoice = prepaymentAmount === null;
 
-  if (prepaymentAmount === null && ((totalAmount !== null && totalAmount > 200) || (codAmount !== null && codAmount > 0))) {
-    prepaymentAmount = 200;
-    warnings.push('Передоплату не видно — підставлено стандартні 200 грн.');
+  if (needsPrepaymentChoice) {
+    warnings.push('Передоплату не видно — оберіть, чи вона є.');
   }
 
   if (normalizedTotal === null && prepaymentAmount !== null && codAmount !== null) {
@@ -101,6 +101,7 @@ export function normalizeExtractedDraft(result) {
     itemsSummary: cleanText(result?.itemsSummary, 1200),
     totalAmount: normalizedTotal,
     prepaymentAmount,
+    codAmount,
     ttn: cleanText(result?.ttn, 40) || '-'
   };
 
@@ -108,7 +109,12 @@ export function normalizeExtractedDraft(result) {
   if (draft.customerName.length < 2) missingFields.push('customerName');
   if (!isValidPhone(draft.phone)) missingFields.push('phone');
   if (draft.itemsSummary.length < 3) missingFields.push('itemsSummary');
-  if (draft.totalAmount === null || draft.totalAmount <= 0) missingFields.push('totalAmount');
+  if (
+    (draft.totalAmount === null || draft.totalAmount <= 0) &&
+    !(needsPrepaymentChoice && codAmount !== null && codAmount > 0)
+  ) {
+    missingFields.push('totalAmount');
+  }
   if (
     draft.prepaymentAmount === null ||
     draft.prepaymentAmount < 0 ||
@@ -121,8 +127,21 @@ export function normalizeExtractedDraft(result) {
     draft,
     warnings,
     missingFields,
+    needsPrepaymentChoice,
     confidence: Number.isFinite(Number(result?.confidence)) ? Number(result.confidence) : 0
   };
+}
+
+export function applyPrepaymentChoice(draft, value) {
+  const prepaymentAmount = parseAmount(value);
+  if (prepaymentAmount === null || prepaymentAmount < 0) throw new Error('invalid_prepayment_choice');
+  let totalAmount = parseAmount(draft?.totalAmount);
+  const codAmount = parseAmount(draft?.codAmount);
+  if (totalAmount === null && codAmount !== null) {
+    totalAmount = Math.round((codAmount + prepaymentAmount) * 100) / 100;
+  }
+  if (totalAmount !== null && prepaymentAmount >= totalAmount) throw new Error('invalid_prepayment_choice');
+  return { ...draft, prepaymentAmount, totalAmount };
 }
 
 export async function extractOrderFromImage({ bytes, mimeType, caption = '', operatorId = '' }) {
