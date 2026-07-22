@@ -57,7 +57,8 @@ export const handler = async (event) => {
       aiGatewayConfigured: Boolean(
         process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1 || process.env.NETLIFY_AI_GATEWAY_KEY
       ),
-      visionModel: process.env.ORDER_VISION_MODEL || 'gpt-5.6-luna'
+      visionModel: process.env.ORDER_VISION_MODEL || 'gpt-5.6-luna',
+      novaPoshtaConfigured: Boolean(process.env.NOVA_POSHTA_API_KEY)
     });
   } catch {
     return response(502, { ok: false, error: 'Telegram registration failed' });

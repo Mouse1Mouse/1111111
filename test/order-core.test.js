@@ -14,6 +14,11 @@ import {
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
 import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
+import {
+  buildInternetDocumentPayload,
+  formatNovaPoshtaDate,
+  normalizeNovaPoshtaPhone
+} from '../netlify/lib/nova-poshta.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
 
@@ -144,4 +149,52 @@ test('keeps uncertain screenshot fields blocked until corrected', () => {
     confidence: 0.2
   });
   assert.deepEqual(result.missingFields, ['phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
+});
+
+test('normalizes Nova Poshta phone numbers and Kyiv shipment dates', () => {
+  assert.equal(normalizeNovaPoshtaPhone('+38 (067) 123-45-67'), '380671234567');
+  assert.equal(formatNovaPoshtaDate(new Date('2026-07-22T10:00:00.000Z')), '22.07.2026');
+  assert.throws(() => normalizeNovaPoshtaPhone('12345'), /invalid_recipient_phone/);
+});
+
+test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
+  const payload = buildInternetDocumentPayload({
+    recipientName: 'Олена Коваль',
+    recipientPhone: '380671234567',
+    recipientCityName: 'Київ',
+    recipientArea: 'Київська область',
+    recipientRegion: '',
+    recipientSettlementType: 'місто',
+    warehouseNumber: '12',
+    totalAmount: 1650,
+    codAmount: 1450,
+    weight: 2,
+    dimensions: { length: 40, width: 30, height: 20 },
+    seatsAmount: 1,
+    description: 'Постільна білизна',
+    deliveryPayer: 'Recipient',
+    sender: {
+      cityRef: 'city-ref',
+      ref: 'sender-ref',
+      addressRef: 'address-ref',
+      contactRef: 'contact-ref',
+      phone: '380501234567'
+    }
+  }, new Date('2026-07-22T10:00:00.000Z'));
+
+  assert.equal(payload.DateTime, '22.07.2026');
+  assert.equal(payload.ServiceType, 'WarehouseWarehouse');
+  assert.equal(payload.RecipientAddressName, '12');
+  assert.equal(payload.PaymentMethod, 'Cash');
+  assert.deepEqual(payload.BackwardDeliveryData, [{
+    PayerType: 'Recipient',
+    CargoType: 'Money',
+    RedeliveryString: '1450.00'
+  }]);
+  assert.deepEqual(payload.OptionsSeat, [{
+    volumetricWidth: '30',
+    volumetricLength: '40',
+    volumetricHeight: '20',
+    weight: '2'
+  }]);
 });

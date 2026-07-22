@@ -43,6 +43,19 @@ export function telegramClient(token) {
         ...options
       });
     },
+    async sendDocument(chatId, document, options = {}) {
+      const form = new FormData();
+      form.append('chat_id', String(chatId));
+      if (options.caption) form.append('caption', String(options.caption).slice(0, 1024));
+      if (options.parse_mode) form.append('parse_mode', options.parse_mode);
+      form.append('document', new Blob([document.bytes], {
+        type: document.mimeType || 'application/pdf'
+      }), document.filename || 'document.pdf');
+      const result = await fetch(`${baseUrl}/sendDocument`, { method: 'POST', body: form });
+      const data = await result.json().catch(() => ({}));
+      if (!result.ok || !data.ok) throw new Error('Telegram sendDocument failed');
+      return data.result;
+    },
     answerCallbackQuery(callbackQueryId, text = '') {
       return call('answerCallbackQuery', {
         callback_query_id: callbackQueryId,

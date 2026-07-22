@@ -18,6 +18,12 @@ import {
 } from '../lib/order-core.js';
 import { applyPrepaymentChoice, extractOrderFromImage, normalizeExtractedDraft } from '../lib/order-extractor.js';
 import {
+  createNovaPoshtaWaybill,
+  downloadNovaPoshtaMarking,
+  isNovaPoshtaConfigured,
+  prepareNovaPoshtaShipment
+} from '../lib/nova-poshta.js';
+import {
   clearSession,
   claimUpdate,
   connectOrderStore,
@@ -79,7 +85,16 @@ function orderButtons(order) {
     rows.push([{ text: `✅ Отримано ${money(order.prepaymentAmount)}`, callback_data: `prepaid:${order.id}` }]);
   }
   if ([ORDER_STATUSES.READY_TO_SHIP, ORDER_STATUSES.AWAITING_NOVAPAY].includes(order.status) && !order.ttn) {
-    rows.push([{ text: '🚚 Додати ТТН', callback_data: `ttn:${order.id}` }]);
+    if (isNovaPoshtaConfigured()) {
+      rows.push([{ text: '🚚 Створити ТТН автоматично', callback_data: `np_prepare:${order.id}` }]);
+    }
+    rows.push([{ text: '✍️ Ввести ТТН вручну', callback_data: `ttn:${order.id}` }]);
+  }
+  if (order.ttn && isNovaPoshtaConfigured()) {
+    rows.push([
+      { text: '🖨 Етикетка A4', callback_data: `np_label:a4:${order.id}` },
+      { text: '🏷 100×100', callback_data: `np_label:zebra:${order.id}` }
+    ]);
   }
   if (order.status === ORDER_STATUSES.AWAITING_NOVAPAY) {
     rows.push([{ text: `✅ NovaPay ${money(order.codAmount)}`, callback_data: `novapay:${order.id}` }]);
@@ -93,6 +108,81 @@ function orderButtons(order) {
 async function sendOrder(bot, chatId, order, receiptInstructions = false) {
   return bot.sendMessage(chatId, formatOrderHtml(order, { receiptInstructions }), {
     reply_markup: orderButtons(order)
+  });
+}
+
+function shipmentErrorText(error) {
+  const messages = {
+    nova_poshta_not_configured: 'API Нової пошти ще не підключено в Netlify.',
+    nova_poshta_sender_missing: 'У бізнес-акаунті не знайдено відправника.',
+    nova_poshta_sender_details_missing: 'У відправника не знайдено адресу або контактну особу.',
+    nova_poshta_destination_missing: 'У замовленні немає міста або відділення.',
+    nova_poshta_warehouse_not_found: 'Не вдалося знайти це відділення Нової пошти. Виправте місто або відділення в замовленні.',
+    nova_poshta_warehouse_ambiguous: 'Знайдено кілька схожих відділень. Уточніть номер або адресу відділення в замовленні.',
+    invalid_recipient_phone: 'Телефон клієнта не підходить для створення ТТН.',
+    nova_poshta_api_failed: 'Нова пошта відхилила запит. Перевірте API-ключ і дані бізнес-акаунта.',
+    invalid_shipment_weight: 'Оберіть правильну вагу відправлення.',
+    invalid_shipment_dimensions: 'Перевірте розміри пакунка.',
+    nova_poshta_waybill_missing: 'Нова пошта не повернула номер ТТН.',
+    nova_poshta_marking_failed: 'Не вдалося отримати етикетку Нової пошти.'
+  };
+  const base = messages[error?.message] || 'Не вдалося виконати операцію з Новою поштою.';
+  return error?.publicMessage ? `${base}\n\n${cleanText(error.publicMessage, 180)}` : base;
+}
+
+function shipmentPreviewHtml(shipment) {
+  const weight = shipment.weight ? `${Number(shipment.weight).toFixed(1)} кг` : 'потрібно обрати';
+  const dimensions = shipment.dimensions || {};
+  return [
+    '<b>🚚 Перевірка перед створенням ТТН</b>',
+    '',
+    `👤 ${escapeHtml(shipment.recipientName)}`,
+    `📞 ${escapeHtml(shipment.recipientPhone)}`,
+    `📍 ${escapeHtml(shipment.recipientCityName)}, ${escapeHtml(shipment.warehouseDescription)}`,
+    `📦 Вага: <b>${escapeHtml(weight)}</b>`,
+    `📐 Розмір: <b>${Number(dimensions.length)}×${Number(dimensions.width)}×${Number(dimensions.height)} см</b>`,
+    `💰 Оголошена вартість: <b>${money(shipment.totalAmount)}</b>`,
+    `💵 Післяплата NovaPay: <b>${money(shipment.codAmount)}</b>`,
+    `🚛 Доставку оплачує: <b>${shipment.deliveryPayer === 'Sender' ? 'MIVA' : 'клієнт'}</b>`,
+    `🏠 Відправник: ${escapeHtml(shipment.sender.description)}, ${escapeHtml(shipment.sender.addressDescription)}`,
+    '',
+    shipment.weight
+      ? '⚠️ Після підтвердження буде створено справжню ТТН у бізнес-кабінеті Нової пошти.'
+      : '❗ Спочатку оберіть фактичну вагу запакованого замовлення.'
+  ].join('\n');
+}
+
+function shipmentPreviewKeyboard(shipment) {
+  const rows = [];
+  if (!shipment.weight) {
+    rows.push([
+      { text: '1 кг', callback_data: `np_weight:1:${shipment.orderId}` },
+      { text: '2 кг', callback_data: `np_weight:2:${shipment.orderId}` }
+    ]);
+    rows.push([
+      { text: '3 кг', callback_data: `np_weight:3:${shipment.orderId}` },
+      { text: '4 кг', callback_data: `np_weight:4:${shipment.orderId}` }
+    ]);
+    rows.push([{ text: '✏️ Інша вага', callback_data: `np_weight:other:${shipment.orderId}` }]);
+  } else {
+    rows.push([{ text: `⚖️ Змінити вагу (${shipment.weight} кг)`, callback_data: `np_weight:other:${shipment.orderId}` }]);
+  }
+  rows.push([{ text: '📐 Змінити розмір пакунка', callback_data: `np_dims:${shipment.orderId}` }]);
+  const nextPayer = shipment.deliveryPayer === 'Sender' ? 'Recipient' : 'Sender';
+  rows.push([{
+    text: shipment.deliveryPayer === 'Sender' ? '💳 Платитиме клієнт' : '💳 Платитиме MIVA',
+    callback_data: `np_payer:${nextPayer}:${shipment.orderId}`
+  }]);
+  if (shipment.weight) {
+    rows.push([{ text: '✅ Підтвердити й створити ТТН', callback_data: `np_create:${shipment.orderId}` }]);
+  }
+  rows.push([{ text: '❌ Скасувати', callback_data: `np_cancel:${shipment.orderId}` }]);
+  return { inline_keyboard: rows };
+}
+
+async function sendShipmentPreview(bot, chatId, shipment) {
+  await bot.sendMessage(chatId, shipmentPreviewHtml(shipment), {
+    reply_markup: shipmentPreviewKeyboard(shipment)
   });
 }
 
@@ -372,6 +462,41 @@ async function handleNewOrderStep(bot, chatId, text, session) {
 async function handleSessionInput(bot, chatId, text, session) {
   if (session.mode === 'new_order') return handleNewOrderStep(bot, chatId, text, session);
 
+  if (session.mode === 'await_np_weight') {
+    const weight = Number(String(text).replace(',', '.'));
+    if (!Number.isFinite(weight) || weight < 0.1 || weight > 30) {
+      await bot.sendMessage(chatId, 'Введіть фактичну вагу від 0,1 до 30 кг. Наприклад: 2,5');
+      return;
+    }
+    const updatedSession = {
+      ...session,
+      mode: 'confirm_nova_poshta_ttn',
+      shipment: { ...session.shipment, weight: Math.round(weight * 100) / 100 },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendShipmentPreview(bot, chatId, updatedSession.shipment);
+    return;
+  }
+
+  if (session.mode === 'await_np_dimensions') {
+    const values = String(text).replaceAll(',', '.').match(/\d+(?:\.\d+)?/g)?.map(Number) || [];
+    if (values.length !== 3 || values.some((value) => value < 1 || value > 300)) {
+      await bot.sendMessage(chatId, 'Введіть три розміри в сантиметрах: довжина ширина висота. Наприклад: 40 30 20');
+      return;
+    }
+    const [length, width, height] = values;
+    const updatedSession = {
+      ...session,
+      mode: 'confirm_nova_poshta_ttn',
+      shipment: { ...session.shipment, dimensions: { length, width, height } },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendShipmentPreview(bot, chatId, updatedSession.shipment);
+    return;
+  }
+
   if (session.mode === 'await_ai_edit') {
     const config = AI_EDIT_FIELDS[session.field];
     const value = cleanText(text, config?.key === 'itemsSummary' ? 1200 : 180);
@@ -519,6 +644,70 @@ async function handleCallback(bot, callback) {
     return;
   }
 
+  if (action === 'np_weight') {
+    const choice = callbackParts[1];
+    const session = await getSession(chatId);
+    if (!['confirm_nova_poshta_ttn', 'await_np_weight', 'await_np_dimensions'].includes(session?.mode) || session.orderId !== id) {
+      await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна. Відкрийте замовлення ще раз.');
+      return;
+    }
+    if (choice === 'other') {
+      await saveSession(chatId, { ...session, mode: 'await_np_weight', updatedAt: new Date().toISOString() });
+      await bot.sendMessage(chatId, 'Введіть фактичну вагу пакунка у кілограмах. Наприклад: 2,5', { reply_markup: CANCEL_KEYBOARD });
+      return;
+    }
+    const weight = Number(choice);
+    if (![1, 2, 3, 4].includes(weight)) {
+      await bot.sendMessage(chatId, 'Не вдалося прочитати вагу. Оберіть її ще раз.');
+      return;
+    }
+    const updatedSession = {
+      ...session,
+      mode: 'confirm_nova_poshta_ttn',
+      shipment: { ...session.shipment, weight },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendShipmentPreview(bot, chatId, updatedSession.shipment);
+    return;
+  }
+
+  if (action === 'np_dims') {
+    const session = await getSession(chatId);
+    if (!['confirm_nova_poshta_ttn', 'await_np_weight', 'await_np_dimensions'].includes(session?.mode) || session.orderId !== id) {
+      await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна.');
+      return;
+    }
+    await saveSession(chatId, { ...session, mode: 'await_np_dimensions', updatedAt: new Date().toISOString() });
+    await bot.sendMessage(chatId, 'Введіть розміри запакованого замовлення у сантиметрах: довжина ширина висота. Наприклад: 40 30 20', {
+      reply_markup: CANCEL_KEYBOARD
+    });
+    return;
+  }
+
+  if (action === 'np_payer') {
+    const payer = callbackParts[1];
+    const session = await getSession(chatId);
+    if (!['Sender', 'Recipient'].includes(payer) || session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id) {
+      await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна.');
+      return;
+    }
+    const updatedSession = {
+      ...session,
+      shipment: { ...session.shipment, deliveryPayer: payer },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendShipmentPreview(bot, chatId, updatedSession.shipment);
+    return;
+  }
+
+  if (action === 'np_cancel') {
+    await clearSession(chatId);
+    await sendMainMenu(bot, chatId, 'Створення ТТН скасовано. Замовлення залишилося без змін.');
+    return;
+  }
+
   if (action === 'ai_prepay') {
     const choice = callbackParts[1];
     const session = await getSession(chatId);
@@ -630,6 +819,90 @@ async function handleCallback(bot, callback) {
   const order = await getOrder(id);
   if (!order) {
     await bot.sendMessage(chatId, 'Замовлення не знайдено.');
+    return;
+  }
+
+  if (action === 'np_prepare') {
+    if (!isNovaPoshtaConfigured()) {
+      await bot.sendMessage(chatId, 'API Нової пошти ще не підключено. Спочатку додайте новий ключ у Netlify.');
+      return;
+    }
+    if (order.status !== ORDER_STATUSES.READY_TO_SHIP || order.ttn) {
+      await bot.sendMessage(chatId, 'Для цього замовлення зараз не можна створити нову ТТН. Перевірте передоплату та наявну ТТН.');
+      return;
+    }
+    await bot.sendMessage(chatId, '⏳ Перевіряю відправника, місто та відділення в Новій пошті…');
+    try {
+      const shipment = await prepareNovaPoshtaShipment(order);
+      const session = {
+        mode: 'confirm_nova_poshta_ttn',
+        orderId: id,
+        shipment,
+        updatedAt: new Date().toISOString()
+      };
+      await saveSession(chatId, session);
+      await sendShipmentPreview(bot, chatId, shipment);
+    } catch (error) {
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
+    }
+    return;
+  }
+
+  if (action === 'np_create') {
+    const session = await getSession(chatId);
+    if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id || !session.shipment?.weight) {
+      await bot.sendMessage(chatId, 'Підготовка ТТН уже неактуальна або не вибрана вага. Почніть ще раз із картки замовлення.');
+      return;
+    }
+    if (order.ttn) {
+      await clearSession(chatId);
+      await bot.sendMessage(chatId, `У замовленні вже є ТТН <b>${escapeHtml(order.ttn)}</b>. Нову ТТН не створено.`);
+      return;
+    }
+    await saveSession(chatId, { ...session, mode: 'creating_nova_poshta_ttn', updatedAt: new Date().toISOString() });
+    await bot.sendMessage(chatId, '⏳ Створюю ТТН у бізнес-кабінеті Нової пошти…');
+    try {
+      const waybill = await createNovaPoshtaWaybill(session.shipment);
+      const attached = attachTtn(order, waybill.ttn);
+      const updated = {
+        ...attached,
+        novaPoshtaRef: waybill.ref,
+        novaPoshtaDeliveryCost: waybill.deliveryCost,
+        novaPoshtaEstimatedDeliveryDate: waybill.estimatedDeliveryDate,
+        novaPoshtaCreatedAt: new Date().toISOString()
+      };
+      await saveOrder(updated);
+      await clearSession(chatId);
+      await bot.sendMessage(chatId, [
+        `✅ ТТН створено: <b>${escapeHtml(waybill.ttn)}</b>`,
+        `Вартість доставки за розрахунком Нової пошти: <b>${money(waybill.deliveryCost)}</b>`,
+        waybill.estimatedDeliveryDate ? `Орієнтовна доставка: <b>${escapeHtml(waybill.estimatedDeliveryDate)}</b>` : '',
+        'Натисніть кнопку етикетки нижче, щоб отримати PDF зі штрихкодом.'
+      ].filter(Boolean).join('\n'));
+      await sendOrder(bot, chatId, updated);
+    } catch (error) {
+      await saveSession(chatId, { ...session, mode: 'confirm_nova_poshta_ttn', updatedAt: new Date().toISOString() });
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
+    }
+    return;
+  }
+
+  if (action === 'np_label') {
+    const format = callbackParts[1] === 'zebra' ? 'zebra' : 'a4';
+    if (!order.ttn || !isNovaPoshtaConfigured()) {
+      await bot.sendMessage(chatId, 'Для етикетки потрібна ТТН та підключений API Нової пошти.');
+      return;
+    }
+    await bot.sendMessage(chatId, '⏳ Готую PDF зі штрихкодом…');
+    try {
+      const document = await downloadNovaPoshtaMarking(order.ttn, format);
+      await bot.sendDocument(chatId, document, {
+        caption: `Етикетка Нової пошти · ${order.ttn}`,
+        parse_mode: 'HTML'
+      });
+    } catch (error) {
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}`);
+    }
     return;
   }
 
