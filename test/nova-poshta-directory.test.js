@@ -44,6 +44,7 @@ test('Nova Poshta directory searches cities without exposing the API key', async
       data: [{ Ref: '11111111-1111-1111-1111-111111111111', Description: 'Київ' }]
     });
     assert.equal(upstreamRequest.apiKey, 'server-test-key');
+    assert.equal(upstreamRequest.modelName, 'AddressGeneral');
     assert.equal(upstreamRequest.calledMethod, 'getCities');
     assert.equal(upstreamRequest.methodProperties.FindByString, 'Київ');
     assert.equal(result.body.includes('server-test-key'), false);

@@ -36,7 +36,7 @@ export const handler = async (event) => {
     if (body.action === 'cities') {
       const query = cleanText(body.query, 80);
       if (query.length < 2) return response(400, { ok: false });
-      const result = await novaPoshtaCall('Address', 'getCities', {
+      const result = await novaPoshtaCall('AddressGeneral', 'getCities', {
         FindByString: query,
         Limit: '20',
         Page: '1',
@@ -48,7 +48,7 @@ export const handler = async (event) => {
     if (body.action === 'warehouses') {
       const cityRef = cleanText(body.cityRef, 60);
       if (!/^[0-9a-f-]{36}$/i.test(cityRef)) return response(400, { ok: false });
-      const result = await novaPoshtaCall('Address', 'getWarehouses', {
+      const result = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
         CityRef: cityRef,
         Limit: '500',
         Page: '1',
