@@ -40,12 +40,13 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   const [selectedBranchRef, setSelectedBranchRef] = useState("");
   const [selectedBranchName, setSelectedBranchName] = useState("");
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  const [deliveryLookupError, setDeliveryLookupError] = useState("");
 
   // Debounce refs
   const cityDebounceRef = useRef<NodeJS.Timeout>();
   const branchDebounceRef = useRef<NodeJS.Timeout>();
 
-  const NOVA_POSHTA_KEY = import.meta.env.VITE_NOVA_POSHTA_API_KEY;
+  const NOVA_POSHTA_DIRECTORY_ENDPOINT = "/.netlify/functions/nova-poshta-directory";
 
   // Build order summary text
   useEffect(() => {
@@ -68,37 +69,34 @@ export default function OrderForm({ onBack }: OrderFormProps) {
 
   // Debounced city search function
   const searchCities = async (query: string) => {
-    if (!NOVA_POSHTA_KEY || !query.trim() || query.length < 2) {
+    if (!query.trim() || query.length < 2) {
       setFilteredCities([]);
+      setDeliveryLookupError("");
       return;
     }
 
     setIsLoadingCities(true);
-    
+    setDeliveryLookupError("");
+
     try {
-      const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
+      const response = await fetch(NOVA_POSHTA_DIRECTORY_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: NOVA_POSHTA_KEY,
-          modelName: "Address",
-          calledMethod: "getCities",
-          methodProperties: { 
-            FindByString: query.trim(),
-            Limit: 20 // Обмежуємо кількість результатів
-          },
+          action: "cities",
+          query: query.trim()
         }),
       });
       const data = await response.json();
-      if (data.success) {
+      if (response.ok && data.ok) {
         setFilteredCities(data.data || []);
       } else {
-        console.error("Nova Poshta API error:", data.errors);
-        setFilteredCities([]);
+        throw new Error("Nova Poshta directory request failed");
       }
     } catch (error) {
       console.error("Помилка при пошуку міст:", error);
       setFilteredCities([]);
+      setDeliveryLookupError("Не вдалося завантажити міста. Спробуйте ще раз.");
     } finally {
       setIsLoadingCities(false);
     }
@@ -131,43 +129,39 @@ export default function OrderForm({ onBack }: OrderFormProps) {
   // Fetch branches when selectedCityRef changes
   useEffect(() => {
     async function fetchBranches() {
-      if (!selectedCityRef || !NOVA_POSHTA_KEY) {
+      if (!selectedCityRef) {
         setBranches([]);
         return;
       }
-      
+
       setIsLoadingBranches(true);
-      
+      setDeliveryLookupError("");
+
       try {
-        const response = await fetch("https://api.novaposhta.ua/v2.0/json/", {
+        const response = await fetch(NOVA_POSHTA_DIRECTORY_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            apiKey: NOVA_POSHTA_KEY,
-            modelName: "Address",
-            calledMethod: "getWarehouses",
-            methodProperties: { 
-              CityRef: selectedCityRef,
-              Limit: 50 // Обмежуємо кількість відділень
-            },
+            action: "warehouses",
+            cityRef: selectedCityRef
           }),
         });
         const data = await response.json();
-        if (data.success) {
+        if (response.ok && data.ok) {
           setBranches(data.data || []);
         } else {
-          console.error("Nova Poshta API error:", data.errors);
-          setBranches([]);
+          throw new Error("Nova Poshta directory request failed");
         }
       } catch (error) {
         console.error("Помилка при завантаженні відділень:", error);
         setBranches([]);
+        setDeliveryLookupError("Не вдалося завантажити відділення. Спробуйте ще раз.");
       } finally {
         setIsLoadingBranches(false);
       }
     }
     fetchBranches();
-  }, [selectedCityRef, NOVA_POSHTA_KEY]);
+  }, [selectedCityRef]);
 
   // Handle city selection from datalist
   const onCitySelect = (name: string) => {
@@ -416,8 +410,8 @@ export default function OrderForm({ onBack }: OrderFormProps) {
                 }}
                 autoComplete="off"
                 required
-                disabled={!NOVA_POSHTA_KEY || isSubmitting}
-                placeholder={NOVA_POSHTA_KEY ? "Почніть вводити місто (мін. 2 символи)..." : "API ключ не налаштований"}
+                disabled={isSubmitting}
+                placeholder="Почніть вводити місто (мін. 2 символи)..."
                 className="w-full border border-gray-300 rounded-lg p-3 focus:border-brandBrown focus:ring focus:ring-brandBrown/20 transition-colors disabled:bg-gray-100"
               />
               {selectedCityName && (
@@ -435,6 +429,9 @@ export default function OrderForm({ onBack }: OrderFormProps) {
             </datalist>
             {selectedCityName && (
               <p className="text-sm text-green-600 mt-1">✓ Обрано: {selectedCityName}</p>
+            )}
+            {deliveryLookupError && (
+              <p className="text-sm text-red-600 mt-1">{deliveryLookupError}</p>
             )}
           </label>
 
@@ -527,15 +524,6 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           </button>
         </form>
 
-        {!NOVA_POSHTA_KEY && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm">
-              <strong>Увага:</strong> Для роботи з Nova Poshta API потрібно додати ключ у файл .env:
-              <br />
-              <code className="bg-yellow-100 px-2 py-1 rounded">VITE_NOVA_POSHTA_API_KEY=ваш_ключ</code>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
