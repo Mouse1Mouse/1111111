@@ -61,7 +61,10 @@ export const handler = async (event) => {
     }
 
     if (body.action === 'warehouses') {
-      const cityName = cleanText(body.cityName, 120).split(',')[0].trim();
+      const cityName = cleanText(body.cityName, 120)
+        .split(',')[0]
+        .replace(/^(?:м\.?|місто)\s*/iu, '')
+        .trim();
       if (cityName.length < 2) return response(400, { ok: false });
       const result = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
         CityName: cityName,

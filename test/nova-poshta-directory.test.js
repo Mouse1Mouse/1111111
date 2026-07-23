@@ -60,3 +60,42 @@ test('Nova Poshta directory searches cities without exposing the API key', async
     else process.env.NOVA_POSHTA_API_KEY = originalKey;
   }
 });
+
+test('Nova Poshta directory loads warehouses for a selected city label', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.NOVA_POSHTA_API_KEY;
+  process.env.NOVA_POSHTA_API_KEY = 'server-test-key';
+  let upstreamRequest;
+  globalThis.fetch = async (_url, options) => {
+    upstreamRequest = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: [{
+          Ref: '22222222-2222-2222-2222-222222222222',
+          Description: 'Відділення №1: вул. Пирогівський шлях, 135'
+        }]
+      })
+    };
+  };
+
+  try {
+    const result = await handler({
+      httpMethod: 'POST',
+      headers: {},
+      body: JSON.stringify({ action: 'warehouses', cityName: 'м. Київ, Київська обл.' })
+    });
+    const body = JSON.parse(result.body);
+    assert.equal(result.statusCode, 200);
+    assert.equal(body.data.length, 1);
+    assert.equal(upstreamRequest.calledMethod, 'getWarehouses');
+    assert.equal(upstreamRequest.methodProperties.CityName, 'Київ');
+    assert.equal(result.body.includes('server-test-key'), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NOVA_POSHTA_API_KEY;
+    else process.env.NOVA_POSHTA_API_KEY = originalKey;
+  }
+});
