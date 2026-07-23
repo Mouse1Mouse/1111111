@@ -143,7 +143,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "warehouses",
-            cityRef: selectedCityRef
+            cityName: selectedCityName
           }),
         });
         const data = await response.json();
@@ -161,7 +161,7 @@ export default function OrderForm({ onBack }: OrderFormProps) {
       }
     }
     fetchBranches();
-  }, [selectedCityRef]);
+  }, [selectedCityRef, selectedCityName]);
 
   // Handle city selection from datalist
   const onCitySelect = (name: string) => {

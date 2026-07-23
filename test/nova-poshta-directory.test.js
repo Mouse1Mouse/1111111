@@ -9,7 +9,7 @@ test('Nova Poshta directory rejects unsupported requests', async () => {
   const invalidResponse = await handler({
     httpMethod: 'POST',
     headers: {},
-    body: JSON.stringify({ action: 'warehouses', cityRef: 'invalid' })
+    body: JSON.stringify({ action: 'warehouses', cityName: '' })
   });
   assert.equal(invalidResponse.statusCode, 400);
 });
@@ -26,7 +26,13 @@ test('Nova Poshta directory searches cities without exposing the API key', async
       status: 200,
       json: async () => ({
         success: true,
-        data: [{ Ref: '11111111-1111-1111-1111-111111111111', Description: 'Київ', Extra: 'hidden' }]
+        data: [{
+          Addresses: [{
+            DeliveryCity: '11111111-1111-1111-1111-111111111111',
+            Present: 'м. Київ, Київська обл.',
+            Extra: 'hidden'
+          }]
+        }]
       })
     };
   };
@@ -41,12 +47,12 @@ test('Nova Poshta directory searches cities without exposing the API key', async
     assert.equal(result.statusCode, 200);
     assert.deepEqual(body, {
       ok: true,
-      data: [{ Ref: '11111111-1111-1111-1111-111111111111', Description: 'Київ' }]
+      data: [{ Ref: '11111111-1111-1111-1111-111111111111', Description: 'м. Київ, Київська обл.' }]
     });
     assert.equal(upstreamRequest.apiKey, 'server-test-key');
     assert.equal(upstreamRequest.modelName, 'AddressGeneral');
-    assert.equal(upstreamRequest.calledMethod, 'getCities');
-    assert.equal(upstreamRequest.methodProperties.FindByString, 'Київ');
+    assert.equal(upstreamRequest.calledMethod, 'searchSettlements');
+    assert.equal(upstreamRequest.methodProperties.CityName, 'Київ');
     assert.equal(result.body.includes('server-test-key'), false);
   } finally {
     globalThis.fetch = originalFetch;
