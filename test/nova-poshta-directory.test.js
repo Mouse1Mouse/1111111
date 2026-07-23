@@ -65,19 +65,31 @@ test('Nova Poshta directory loads warehouses for a selected city label', async (
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.NOVA_POSHTA_API_KEY;
   process.env.NOVA_POSHTA_API_KEY = 'server-test-key';
-  let upstreamRequest;
+  const upstreamRequests = [];
   globalThis.fetch = async (_url, options) => {
-    upstreamRequest = JSON.parse(options.body);
+    const request = JSON.parse(options.body);
+    upstreamRequests.push(request);
     return {
       ok: true,
       status: 200,
-      json: async () => ({
-        success: true,
-        data: [{
-          Ref: '22222222-2222-2222-2222-222222222222',
-          Description: 'Відділення №1: вул. Пирогівський шлях, 135'
-        }]
-      })
+      json: async () => request.calledMethod === 'searchSettlements'
+        ? {
+            success: true,
+            data: [{
+              Addresses: [{
+                DeliveryCity: '11111111-1111-1111-1111-111111111111',
+                MainDescription: 'Київ',
+                Present: 'м. Київ, Київська обл.'
+              }]
+            }]
+          }
+        : {
+            success: true,
+            data: [{
+              Ref: '22222222-2222-2222-2222-222222222222',
+              Description: 'Відділення №1: вул. Пирогівський шлях, 135'
+            }]
+          }
     };
   };
 
@@ -90,8 +102,14 @@ test('Nova Poshta directory loads warehouses for a selected city label', async (
     const body = JSON.parse(result.body);
     assert.equal(result.statusCode, 200);
     assert.equal(body.data.length, 1);
-    assert.equal(upstreamRequest.calledMethod, 'getWarehouses');
-    assert.equal(upstreamRequest.methodProperties.CityName, 'Київ');
+    assert.equal(upstreamRequests.length, 2);
+    assert.equal(upstreamRequests[0].calledMethod, 'searchSettlements');
+    assert.equal(upstreamRequests[1].calledMethod, 'getWarehouses');
+    assert.equal(upstreamRequests[1].methodProperties.CityName, 'Київ');
+    assert.equal(
+      upstreamRequests[1].methodProperties.CityRef,
+      '11111111-1111-1111-1111-111111111111'
+    );
     assert.equal(result.body.includes('server-test-key'), false);
   } finally {
     globalThis.fetch = originalFetch;

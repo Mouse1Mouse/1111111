@@ -109,7 +109,7 @@ async function resolveSender(options = {}) {
       Page: '1'
     }, options),
     senderWarehouseInput
-      ? resolveWarehouse(senderWarehouseInput.city, senderWarehouseInput.branch, options)
+      ? resolveNovaPoshtaWarehouse(senderWarehouseInput.city, senderWarehouseInput.branch, options)
       : Promise.resolve(null)
   ]);
   const address = senderWarehouse || selectedByRef(addresses.data, options.senderAddressRef || process.env.NOVA_POSHTA_SENDER_ADDRESS_REF);
@@ -133,16 +133,63 @@ async function resolveSender(options = {}) {
 function recipientCityName(value) {
   return cleanText(value, 120)
     .split(',')[0]
-    .replace(/^(?:м\.?|місто)\s*/i, '')
+    .replace(/^(?:м\.?|місто|с\.?|село|смт\.?|селище)\s*/iu, '')
     .trim();
 }
 
 function requestedWarehouseNumber(value) {
   const text = cleanText(value, 180);
-  const contextual = text.match(/(?:відділення|поштомат|№)\s*№?\s*(\d+)/i);
+  const contextual = text.match(/(?:відділення|поштомат|нп|№)\s*№?\s*(\d+)/iu);
   if (contextual) return String(Number(contextual[1]));
   const onlyNumber = text.match(/^#?\s*(\d+)\s*$/);
   return onlyNumber ? String(Number(onlyNumber[1])) : '';
+}
+
+export async function searchNovaPoshtaSettlements(cityValue, options = {}) {
+  const city = recipientCityName(cityValue);
+  if (!city) throw new Error('nova_poshta_destination_missing');
+  const response = await novaPoshtaCall('AddressGeneral', 'searchSettlements', {
+    CityName: city,
+    Limit: '20',
+    Page: '1'
+  }, options);
+  return response.data
+    .flatMap((item) => Array.isArray(item?.Addresses) ? item.Addresses : [])
+    .filter((item) => item?.DeliveryCity && (item?.Present || item?.MainDescription));
+}
+
+function settlementTypePrefix(value) {
+  const match = cleanText(value, 120).match(/^(м\.?|с\.?|смт\.?)/iu);
+  return match ? match[1].toLocaleLowerCase('uk-UA').replace('.', '') : '';
+}
+
+async function resolveSettlement(cityValue, options = {}) {
+  const city = recipientCityName(cityValue).toLocaleLowerCase('uk-UA');
+  const settlements = await searchNovaPoshtaSettlements(cityValue, options);
+  const exact = settlements.filter(
+    (item) => cleanText(item.MainDescription, 120).toLocaleLowerCase('uk-UA') === city
+  );
+  const candidates = exact.length ? exact : settlements;
+  const requestedType = settlementTypePrefix(cityValue);
+  const selected = candidates.find((item) => {
+    const presentType = settlementTypePrefix(item.Present);
+    return requestedType ? presentType === requestedType : presentType === 'м';
+  }) || candidates[0];
+  if (!selected) throw new Error('nova_poshta_city_not_found');
+  return selected;
+}
+
+export async function listNovaPoshtaWarehouses(cityValue, options = {}) {
+  const city = recipientCityName(cityValue);
+  const settlement = await resolveSettlement(cityValue, options);
+  const response = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
+    CityRef: settlement.DeliveryCity,
+    CityName: city,
+    Page: '1',
+    Limit: '500',
+    Language: 'UA'
+  }, options);
+  return response.data.filter((warehouse) => warehouse?.Ref && warehouse.DenyToSelect !== '1');
 }
 
 export function parseSenderWarehouseSelection(value) {
@@ -196,12 +243,14 @@ function warehouseScore(warehouse, query, number) {
   return score;
 }
 
-async function resolveWarehouse(cityValue, queryValue, options = {}) {
+export async function resolveNovaPoshtaWarehouse(cityValue, queryValue, options = {}) {
   const city = recipientCityName(cityValue);
   const query = cleanText(queryValue, 180);
   if (!city || !query) throw new Error('nova_poshta_destination_missing');
+  const settlement = await resolveSettlement(cityValue, options);
   const number = requestedWarehouseNumber(query);
   const properties = {
+    CityRef: settlement.DeliveryCity,
     CityName: city,
     FindByString: query,
     Page: '1',
@@ -222,7 +271,7 @@ async function resolveWarehouse(cityValue, queryValue, options = {}) {
 }
 
 async function resolveRecipientWarehouse(order, options = {}) {
-  return resolveWarehouse(order.city, order.branch, options);
+  return resolveNovaPoshtaWarehouse(order.city, order.branch, options);
 }
 
 function configuredDimensions(options = {}) {

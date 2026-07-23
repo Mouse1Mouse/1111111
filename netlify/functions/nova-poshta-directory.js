@@ -1,4 +1,7 @@
-import { novaPoshtaCall } from '../lib/nova-poshta.js';
+import {
+  listNovaPoshtaWarehouses,
+  searchNovaPoshtaSettlements
+} from '../lib/nova-poshta.js';
 import { cleanText } from '../lib/order-core.js';
 
 const response = (statusCode, body) => ({
@@ -22,7 +25,6 @@ function publicDirectoryItems(items) {
 function publicSettlementItems(items) {
   const seen = new Set();
   return items
-    .flatMap((item) => Array.isArray(item?.Addresses) ? item.Addresses : [])
     .map((item) => ({
       Ref: cleanText(item?.DeliveryCity, 60),
       Description: cleanText(item?.Present || item?.MainDescription, 240)
@@ -52,27 +54,15 @@ export const handler = async (event) => {
     if (body.action === 'cities') {
       const query = cleanText(body.query, 80);
       if (query.length < 2) return response(400, { ok: false });
-      const result = await novaPoshtaCall('AddressGeneral', 'searchSettlements', {
-        CityName: query,
-        Limit: '20',
-        Page: '1'
-      });
-      return response(200, { ok: true, data: publicSettlementItems(result.data) });
+      const settlements = await searchNovaPoshtaSettlements(query);
+      return response(200, { ok: true, data: publicSettlementItems(settlements) });
     }
 
     if (body.action === 'warehouses') {
-      const cityName = cleanText(body.cityName, 120)
-        .split(',')[0]
-        .replace(/^(?:м\.?|місто)\s*/iu, '')
-        .trim();
+      const cityName = cleanText(body.cityName, 120);
       if (cityName.length < 2) return response(400, { ok: false });
-      const result = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
-        CityName: cityName,
-        Limit: '500',
-        Page: '1',
-        Language: 'UA'
-      });
-      return response(200, { ok: true, data: publicDirectoryItems(result.data) });
+      const warehouses = await listNovaPoshtaWarehouses(cityName);
+      return response(200, { ok: true, data: publicDirectoryItems(warehouses) });
     }
 
     return response(400, { ok: false });

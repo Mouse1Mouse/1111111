@@ -24,7 +24,8 @@ import {
   normalizeNovaPoshtaPhone,
   novaPoshtaCall,
   parseSenderWarehouseSelection,
-  parseShipmentPreviewOptions
+  parseShipmentPreviewOptions,
+  resolveNovaPoshtaWarehouse
 } from '../netlify/lib/nova-poshta.js';
 
 const NOW = '2026-07-22T10:00:00.000Z';
@@ -277,6 +278,56 @@ test('retries a temporary Nova Poshta API rate limit', async () => {
     });
     assert.equal(requests, 2);
     assert.equal(result.data[0].Ref, 'warehouse-ref');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('resolves a bot warehouse through the current settlement directory', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    requests.push(request);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => request.calledMethod === 'searchSettlements'
+        ? {
+            success: true,
+            data: [{
+              Addresses: [{
+                DeliveryCity: '11111111-1111-1111-1111-111111111111',
+                MainDescription: 'Київ',
+                Present: 'м. Київ, Київська обл.'
+              }]
+            }]
+          }
+        : {
+            success: true,
+            data: [{
+              Ref: '22222222-2222-2222-2222-222222222222',
+              Number: '25405',
+              Description: 'Поштомат №25405: просп. Академіка Палладіна, 20',
+              ShortAddress: 'просп. Академіка Палладіна, 20',
+              WarehouseStatus: 'Working',
+              DenyToSelect: '0'
+            }]
+          }
+    };
+  };
+
+  try {
+    const warehouse = await resolveNovaPoshtaWarehouse('Київ', 'НП 25405', {
+      apiKey: 'test-key',
+      retryBaseDelayMs: 0
+    });
+    assert.equal(warehouse.Number, '25405');
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].calledMethod, 'searchSettlements');
+    assert.equal(requests[1].calledMethod, 'getWarehouses');
+    assert.equal(requests[1].methodProperties.CityRef, '11111111-1111-1111-1111-111111111111');
+    assert.equal(requests[1].methodProperties.WarehouseId, '25405');
   } finally {
     globalThis.fetch = originalFetch;
   }

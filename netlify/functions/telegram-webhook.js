@@ -148,6 +148,7 @@ function shipmentErrorText(error) {
     nova_poshta_sender_missing: 'У бізнес-акаунті не знайдено відправника.',
     nova_poshta_sender_details_missing: 'У відправника не знайдено адресу або контактну особу.',
     nova_poshta_destination_missing: 'У замовленні немає міста або відділення.',
+    nova_poshta_city_not_found: 'Не вдалося знайти це місто в довіднику Нової пошти. Виправте назву міста в замовленні.',
     nova_poshta_warehouse_not_found: 'Не вдалося знайти це відділення Нової пошти. Виправте місто або відділення в замовленні.',
     nova_poshta_warehouse_ambiguous: 'Знайдено кілька схожих відділень. Уточніть номер або адресу відділення в замовленні.',
     nova_poshta_rate_limited: 'Нова пошта тимчасово обмежила кількість API-запитів. Бот уже виконав автоматичні повтори.',
