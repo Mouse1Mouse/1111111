@@ -7,6 +7,7 @@ import {
   createOrder,
   createOrderId,
   escapeHtml,
+  formatOrderHtml,
   isValidCustomerOrderNumber,
   markNovaPayReceived,
   markPrepaymentReceived,
@@ -16,7 +17,11 @@ import {
   parseTtnFromOrderCard
 } from '../netlify/lib/order-core.js';
 import { deriveWebhookSecret } from '../netlify/lib/telegram-client.js';
-import { applyPrepaymentChoice, normalizeExtractedDraft } from '../netlify/lib/order-extractor.js';
+import {
+  applyPrepaymentChoice,
+  extractOrderFromText,
+  normalizeExtractedDraft
+} from '../netlify/lib/order-extractor.js';
 import { createPackingLabelDocument, wrapPackingLabelText } from '../netlify/lib/packing-label.js';
 import {
   buildInternetDocumentPayload,
@@ -208,7 +213,7 @@ test('supports an order without a prepayment and uses the visible NovaPay balanc
   assert.equal(updated.totalAmount, 1700);
 });
 
-test('keeps uncertain screenshot fields blocked until corrected', () => {
+test('warns about a missing order number without blocking the order', () => {
   const result = normalizeExtractedDraft({
     customerName: 'Олена',
     phone: '',
@@ -217,7 +222,63 @@ test('keeps uncertain screenshot fields blocked until corrected', () => {
     prepaymentAmount: null,
     confidence: 0.2
   });
-  assert.deepEqual(result.missingFields, ['customerOrderNumber', 'phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
+  assert.deepEqual(result.missingFields, ['phone', 'itemsSummary', 'totalAmount', 'prepaymentAmount']);
+  assert.match(result.warnings.join(' '), /Номер замовлення не вказано/);
+
+  const order = createOrder(draft({ customerOrderNumber: '' }), { now: NOW });
+  assert.match(formatOrderHtml(order), /⚠️ Номер замовлення не вказано/);
+});
+
+test('extracts a copied order as text without sending image input', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.OPENAI_API_KEY;
+  let requestBody;
+  process.env.OPENAI_API_KEY = 'test-key';
+  globalThis.fetch = async (_url, options) => {
+    requestBody = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({
+        output: [{
+          content: [{
+            type: 'output_text',
+            text: JSON.stringify({
+              customerOrderNumber: '',
+              customerName: 'Олена Коваль',
+              instagramHandle: '@olena',
+              phone: '+380671234567',
+              email: '',
+              city: 'Нетішин',
+              branch: 'Відділення №2',
+              itemsSummary: 'Комплект постільної білизни — 1 шт',
+              totalAmount: 1650,
+              prepaymentAmount: 200,
+              codAmount: 1450,
+              ttn: '',
+              confidence: 0.95
+            })
+          }]
+        }]
+      })
+    };
+  };
+
+  try {
+    const result = await extractOrderFromText({
+      text: 'Олена Коваль, +380671234567, Нетішин, відділення 2, комплект 1650 грн, передоплата 200 грн',
+      operatorId: '123'
+    });
+    const content = requestBody.input[0].content;
+    assert.deepEqual(content.map((item) => item.type), ['input_text']);
+    assert.match(content[0].text, /Copied order text/);
+    assert.equal(result.draft.customerName, 'Олена Коваль');
+    assert.equal(result.missingFields.includes('customerOrderNumber'), false);
+    assert.match(result.warnings.join(' '), /Номер замовлення не вказано/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalApiKey;
+  }
 });
 
 test('normalizes Nova Poshta phone numbers and Kyiv shipment dates', () => {
@@ -236,6 +297,11 @@ test('parses a sender warehouse selected for the current shipment', () => {
     city: 'Хмельницький',
     branch: 'Відділення №12',
     number: '12'
+  });
+  assert.deepEqual(parseSenderWarehouseSelection('Нетішин 2'), {
+    city: 'Нетішин',
+    branch: 'Відділення №2',
+    number: '2'
   });
   assert.equal(parseSenderWarehouseSelection('відділення'), null);
 });

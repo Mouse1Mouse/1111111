@@ -70,6 +70,16 @@ export function telegramClient(token) {
         reply_markup: replyMarkup
       });
     },
+    editMessageText(chatId, messageId, text, options = {}) {
+      return call('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        ...options
+      });
+    },
     getWebhookInfo() {
       return call('getWebhookInfo', {});
     },

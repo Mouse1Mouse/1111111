@@ -9,6 +9,7 @@ import {
 } from './order-core.js';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_ORDER_TEXT_LENGTH = 8000;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const EXTRACTION_SCHEMA = {
@@ -19,7 +20,7 @@ const EXTRACTION_SCHEMA = {
       type: 'string',
       description: 'Merchant order number explicitly written near Замовлення №, Заказ №, # or order number, or empty string.'
     },
-    customerName: { type: 'string', description: 'Customer name visible in the screenshot, or empty string.' },
+    customerName: { type: 'string', description: 'Customer name visible in the source, or empty string.' },
     instagramHandle: { type: 'string', description: 'Instagram username including @ when visible, or empty string.' },
     phone: { type: 'string', description: 'Customer phone number, or empty string.' },
     email: { type: 'string', description: 'Customer email, or empty string.' },
@@ -62,8 +63,8 @@ const EXTRACTION_SCHEMA = {
 };
 
 const EXTRACTION_PROMPT = `
-Extract an Instagram bedding order from this screenshot for a Ukrainian business.
-Return only facts that are explicitly visible. Never invent missing customer or payment data.
+Extract an Instagram bedding order from the supplied screenshot or copied text for a Ukrainian business.
+Return only facts that are explicitly present. Never invent missing customer or payment data.
 Extract customerOrderNumber only when it is explicitly labelled like "Замовлення №1542", "Заказ №1542", "№ замовлення 1542" or "Order #1542".
 Do not use the internal MIVA id as customerOrderNumber.
 Do not confuse a phone number, order number, message time or price with a Nova Poshta TTN.
@@ -121,7 +122,9 @@ export function normalizeExtractedDraft(result) {
   };
 
   const missingFields = [];
-  if (!isValidCustomerOrderNumber(draft.customerOrderNumber)) missingFields.push('customerOrderNumber');
+  if (!isValidCustomerOrderNumber(draft.customerOrderNumber)) {
+    warnings.push('Номер замовлення не вказано — його можна додати пізніше.');
+  }
   if (draft.customerName.length < 2) missingFields.push('customerName');
   if (!isValidPhone(draft.phone)) missingFields.push('phone');
   if (draft.itemsSummary.length < 3) missingFields.push('itemsSummary');
@@ -160,15 +163,20 @@ export function applyPrepaymentChoice(draft, value) {
   return { ...draft, prepaymentAmount, totalAmount };
 }
 
-export async function extractOrderFromImage({ bytes, mimeType, caption = '', operatorId = '' }) {
-  if (!SUPPORTED_IMAGE_TYPES.has(mimeType)) throw new Error('unsupported_image_type');
-  if (!bytes?.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('image_too_large');
+function cleanOrderSourceText(value) {
+  return String(value ?? '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, MAX_ORDER_TEXT_LENGTH);
+}
 
+async function extractOrder(content, operatorId) {
   const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1 || process.env.NETLIFY_AI_GATEWAY_KEY;
   const baseUrl = process.env.OPENAI_BASE_URL || process.env.NETLIFY_AI_GATEWAY_BASE_URL;
   if (!apiKey) throw new Error('ai_gateway_not_configured');
 
-  const base64Image = Buffer.from(bytes).toString('base64');
   const safetyIdentifier = createHash('sha256')
     .update(`miva-order-operator:${operatorId}`)
     .digest('hex');
@@ -186,10 +194,7 @@ export async function extractOrderFromImage({ bytes, mimeType, caption = '', ope
       max_output_tokens: 1200,
       input: [{
         role: 'user',
-        content: [
-          { type: 'input_text', text: caption ? `${EXTRACTION_PROMPT}\n\nCaption: ${cleanText(caption, 500)}` : EXTRACTION_PROMPT },
-          { type: 'input_image', image_url: `data:${mimeType};base64,${base64Image}`, detail: 'auto' }
-        ]
+        content
       }],
       text: {
         format: {
@@ -213,4 +218,23 @@ export async function extractOrderFromImage({ bytes, mimeType, caption = '', ope
   } catch {
     throw new Error('ai_invalid_result');
   }
+}
+
+export async function extractOrderFromImage({ bytes, mimeType, caption = '', operatorId = '' }) {
+  if (!SUPPORTED_IMAGE_TYPES.has(mimeType)) throw new Error('unsupported_image_type');
+  if (!bytes?.byteLength || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('image_too_large');
+  const base64Image = Buffer.from(bytes).toString('base64');
+  return extractOrder([
+    { type: 'input_text', text: caption ? `${EXTRACTION_PROMPT}\n\nCaption: ${cleanText(caption, 500)}` : EXTRACTION_PROMPT },
+    { type: 'input_image', image_url: `data:${mimeType};base64,${base64Image}`, detail: 'auto' }
+  ], operatorId);
+}
+
+export async function extractOrderFromText({ text, operatorId = '' }) {
+  const sourceText = cleanOrderSourceText(text);
+  if (sourceText.length < 20) throw new Error('order_text_too_short');
+  return extractOrder([{
+    type: 'input_text',
+    text: `${EXTRACTION_PROMPT}\n\nCopied order text:\n${sourceText}`
+  }], operatorId);
 }

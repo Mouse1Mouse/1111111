@@ -214,7 +214,9 @@ export function formatOrderHtml(order, { receiptInstructions = false } = {}) {
   const ttn = order.ttn ? escapeHtml(order.ttn) : 'ще не додано';
   const lines = [
     `<b>${escapeHtml(order.id)}</b> · Instagram`,
-    ...(order.customerOrderNumber ? [`🧾 Замовлення №<b>${escapeHtml(order.customerOrderNumber)}</b>`] : []),
+    order.customerOrderNumber
+      ? `🧾 Замовлення №<b>${escapeHtml(order.customerOrderNumber)}</b>`
+      : '⚠️ Номер замовлення не вказано',
     `👤 ${escapeHtml(order.customerName)}`,
     ...(order.instagramHandle ? [`📱 Instagram: ${escapeHtml(order.instagramHandle)}`] : []),
     `📞 ${escapeHtml(order.phone)}`,
