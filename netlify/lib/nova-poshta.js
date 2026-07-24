@@ -243,31 +243,63 @@ function warehouseScore(warehouse, query, number) {
   return score;
 }
 
+function rankedWarehouses(items, query, number) {
+  return items
+    .filter((warehouse) => warehouse?.Ref && warehouse.DenyToSelect !== '1')
+    .map((warehouse) => ({ warehouse, score: warehouseScore(warehouse, query, number) }))
+    .sort((left, right) => right.score - left.score);
+}
+
+function bestWarehouse(candidates) {
+  const best = candidates[0];
+  if (!best || (candidates.length > 1 && best.score === candidates[1].score)) return null;
+  return best.warehouse;
+}
+
 export async function resolveNovaPoshtaWarehouse(cityValue, queryValue, options = {}) {
   const city = recipientCityName(cityValue);
   const query = cleanText(queryValue, 180);
   if (!city || !query) throw new Error('nova_poshta_destination_missing');
   const settlement = await resolveSettlement(cityValue, options);
   const number = requestedWarehouseNumber(query);
-  const properties = {
+  const baseProperties = {
     CityRef: settlement.DeliveryCity,
     CityName: city,
-    FindByString: query,
     Page: '1',
-    Limit: '20',
+    Limit: '50',
     Language: 'UA'
   };
-  if (number) properties.WarehouseId = number;
-  const response = await novaPoshtaCall('AddressGeneral', 'getWarehouses', properties, options);
-  const candidates = response.data
-    .filter((warehouse) => warehouse?.Ref && warehouse.DenyToSelect !== '1')
-    .map((warehouse) => ({ warehouse, score: warehouseScore(warehouse, query, number) }))
-    .sort((left, right) => right.score - left.score);
-  const best = candidates[0];
-  if (!best || (candidates.length > 1 && best.score === candidates[1].score)) {
+
+  if (number) {
+    const exactResponse = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
+      ...baseProperties,
+      WarehouseId: number
+    }, options);
+    const exactCandidates = rankedWarehouses(exactResponse.data, query, number)
+      .filter(({ warehouse }) => String(Number(warehouse.Number)) === number);
+    const exact = exactCandidates[0]?.warehouse;
+    if (exact) return exact;
+
+    const numberSearchResponse = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
+      ...baseProperties,
+      FindByString: number
+    }, options);
+    const numberCandidates = rankedWarehouses(numberSearchResponse.data, query, number)
+      .filter(({ warehouse }) => String(Number(warehouse.Number)) === number);
+    const numberMatch = numberCandidates[0]?.warehouse;
+    if (numberMatch) return numberMatch;
+  }
+
+  const response = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
+    ...baseProperties,
+    FindByString: query
+  }, options);
+  const candidates = rankedWarehouses(response.data, query, number);
+  const best = bestWarehouse(candidates);
+  if (!best) {
     throw new Error(candidates.length ? 'nova_poshta_warehouse_ambiguous' : 'nova_poshta_warehouse_not_found');
   }
-  return best.warehouse;
+  return best;
 }
 
 async function resolveRecipientWarehouse(order, options = {}) {

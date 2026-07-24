@@ -1,5 +1,6 @@
 import {
   listNovaPoshtaWarehouses,
+  resolveNovaPoshtaWarehouse,
   searchNovaPoshtaSettlements
 } from '../lib/nova-poshta.js';
 import { cleanText } from '../lib/order-core.js';
@@ -63,6 +64,14 @@ export const handler = async (event) => {
       if (cityName.length < 2) return response(400, { ok: false });
       const warehouses = await listNovaPoshtaWarehouses(cityName);
       return response(200, { ok: true, data: publicDirectoryItems(warehouses) });
+    }
+
+    if (body.action === 'warehouse') {
+      const cityName = cleanText(body.cityName, 120);
+      const query = cleanText(body.query, 180);
+      if (cityName.length < 2 || query.length < 1) return response(400, { ok: false });
+      const warehouse = await resolveNovaPoshtaWarehouse(cityName, query);
+      return response(200, { ok: true, data: publicDirectoryItems([warehouse]) });
     }
 
     return response(400, { ok: false });

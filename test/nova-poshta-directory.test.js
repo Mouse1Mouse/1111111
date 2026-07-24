@@ -117,3 +117,57 @@ test('Nova Poshta directory loads warehouses for a selected city label', async (
     else process.env.NOVA_POSHTA_API_KEY = originalKey;
   }
 });
+
+test('Nova Poshta directory resolves a high-numbered post locker exactly', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.NOVA_POSHTA_API_KEY;
+  process.env.NOVA_POSHTA_API_KEY = 'server-test-key';
+  globalThis.fetch = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    const data = request.calledMethod === 'searchSettlements'
+      ? [{
+          Addresses: [{
+            DeliveryCity: 'kyiv-city-ref',
+            MainDescription: 'Київ',
+            Present: 'м. Київ, Київська обл.'
+          }]
+        }]
+      : request.methodProperties.WarehouseId === '26693'
+        ? [{
+            Ref: 'locker-ref',
+            Number: '26693',
+            Description: 'Поштомат №26693: вул. Тестова, 1',
+            WarehouseStatus: 'Working',
+            DenyToSelect: '0'
+          }]
+        : [];
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, data, errors: [], warnings: [] })
+    };
+  };
+
+  try {
+    const result = await handler({
+      httpMethod: 'POST',
+      headers: {},
+      body: JSON.stringify({
+        action: 'warehouse',
+        cityName: 'Київ',
+        query: 'Поштомат 26693'
+      })
+    });
+    const body = JSON.parse(result.body);
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(body.data, [{
+      Ref: 'locker-ref',
+      Description: 'Поштомат №26693: вул. Тестова, 1'
+    }]);
+    assert.equal(result.body.includes('server-test-key'), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NOVA_POSHTA_API_KEY;
+    else process.env.NOVA_POSHTA_API_KEY = originalKey;
+  }
+});

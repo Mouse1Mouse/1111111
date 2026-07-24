@@ -394,6 +394,53 @@ test('resolves a bot warehouse through the current settlement directory', async 
     assert.equal(requests[1].calledMethod, 'getWarehouses');
     assert.equal(requests[1].methodProperties.CityRef, '11111111-1111-1111-1111-111111111111');
     assert.equal(requests[1].methodProperties.WarehouseId, '25405');
+    assert.equal(requests[1].methodProperties.FindByString, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('retries a numbered post locker lookup by number when the exact filter is empty', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (_url, options) => {
+    const request = JSON.parse(options.body);
+    requests.push(request);
+    let data = [];
+    if (request.calledMethod === 'searchSettlements') {
+      data = [{
+        Addresses: [{
+          DeliveryCity: 'kyiv-city-ref',
+          MainDescription: 'Київ',
+          Present: 'м. Київ, Київська обл.'
+        }]
+      }];
+    } else if (request.methodProperties.FindByString === '26693') {
+      data = [{
+        Ref: 'locker-ref',
+        Number: '26693',
+        Description: 'Поштомат №26693: вул. Тестова, 1',
+        WarehouseStatus: 'Working',
+        DenyToSelect: '0'
+      }];
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, data, errors: [], warnings: [] })
+    };
+  };
+
+  try {
+    const warehouse = await resolveNovaPoshtaWarehouse('Київ', 'Поштомат 26693', {
+      apiKey: 'test-key',
+      retryBaseDelayMs: 0
+    });
+    assert.equal(warehouse.Number, '26693');
+    assert.equal(requests.length, 3);
+    assert.equal(requests[1].methodProperties.WarehouseId, '26693');
+    assert.equal(requests[1].methodProperties.FindByString, undefined);
+    assert.equal(requests[2].methodProperties.FindByString, '26693');
   } finally {
     globalThis.fetch = originalFetch;
   }
