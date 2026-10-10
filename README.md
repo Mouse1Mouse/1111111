@@ -7,11 +7,28 @@ The Telegram webhook stores operator-created Instagram orders in Netlify Blobs a
 1. Order created with customer, nomenclature, full value and IBAN prepayment.
 2. Operator confirms that the IBAN prepayment was received.
 3. Operator either creates the Nova Poshta TTN through the business API after preview/confirmation or enters it manually.
-4. Operator confirms that the exact COD balance arrived through NovaPay.
-5. The bot prepares the full data for a manual fiscal receipt in SOTA Kasa.
-6. Operator records the SOTA fiscal receipt number and closes the order.
+4. Operator confirms the gross COD amount by TTN. The bot separately records the
+   0.5% NovaPay fee and the net settlement credited to the NovaPay account.
+5. The bot prepares the data for a CheckBox fiscal receipt and protects each order from duplicate fiscalization.
+6. Until the CheckBox production switch is explicitly enabled, the operator may record an already-issued CheckBox receipt number manually.
 
-The bot does **not** create a SOTA Kasa receipt automatically. A real fiscal operation must be verified in SOTA before the order is marked as complete.
+After a NovaPay payment is confirmed, the bot prepares and stores a CheckBox receipt draft with a stable idempotency key. A later transfer from the NovaPay account to the merchant's own Monobank account is an internal transfer, not a second customer payment. Direct FOP-IBAN payments are deliberately excluded from automatic fiscalization under MIVA's current payment rule.
+
+The receipt draft uses the 23-item MIVA catalog. It maps bedding sets, fitted sheets, duvets, pillowcases and flat sheets to their exact `MIVA-*` articles, quantities and prices. Unknown products and amount mismatches are marked for review instead of being silently accepted.
+
+The CheckBox client is prepared but live fiscalization is disabled by default. It uses the official API with the cash-register license key and the cashier PIN, obtains a short-lived access token, and never stores those secrets in orders or chat messages. Live fiscalization is enabled only with `CHECKBOX_LIVE_ENABLED=true` after one controlled production test.
+
+### CheckBox shifts and Z reports
+
+The Telegram bot has a controlled shift workflow for active CheckBox cash register `4001550296`:
+
+1. `🧾 Каса і Z-звіт` shows the locally recorded shift state and the current Kyiv-day receipt summary.
+2. The manager prepares an opening, opens the shift in CheckBox, and confirms the successful result in Telegram.
+3. At the end of the day the manager prepares closing, compares the receipt totals, creates the Z report in CheckBox, and records its fiscal number in Telegram.
+4. Opening and closing operations use a storage lock and state transitions so repeated button presses cannot create duplicate workflow operations.
+5. A scheduled function checks every 15 minutes and sends one reminder after 23:30 Europe/Kyiv when a shift is still open or waiting for a Z report.
+
+This is intentionally a controlled transition. The bot does not create a live CheckBox receipt or operate a live CheckBox shift until production access is enabled and one controlled sale has been verified. This prevents test work from accidentally creating real fiscal documents.
 
 ### Nova Poshta TTN and marking
 
@@ -35,6 +52,11 @@ For this deployment, `OPENAI_API_KEY1` is also accepted as a compatibility alias
 - `NOVA_POSHTA_DEFAULT_WEIGHT_KG` — optional default package weight. When omitted, the bot requires a 1–4 kg button choice or manual weight.
 - `NOVA_POSHTA_DEFAULT_LENGTH_CM`, `NOVA_POSHTA_DEFAULT_WIDTH_CM`, `NOVA_POSHTA_DEFAULT_HEIGHT_CM` — optional package dimensions; defaults are 40×30×20 cm and are always shown before confirmation.
 - `NOVA_POSHTA_CARGO_DESCRIPTION` — optional cargo description; defaults to `Постільна білизна`.
+- `CHECKBOX_CASHIER_PIN` — cashier PIN from CheckBox; store only in Netlify environment variables.
+- `CHECKBOX_LICENSE_KEY` — active CheckBox cash-register license key; store only in Netlify environment variables.
+- `CHECKBOX_CASH_ID` — optional CheckBox fiscal number override; defaults to `4001550296`.
+- `CHECKBOX_LIVE_ENABLED` — keep unset or `false` while testing; set to `true` only after the controlled live-check authorization.
+- `CHECKBOX_CLIENT_NAME`, `CHECKBOX_CLIENT_VERSION` — optional API client identifiers.
 
 After deployment, send a `POST` request to `/.netlify/functions/telegram-register`. The endpoint can only register the fixed webhook URL belonging to the current Netlify site. It never accepts another URL and never returns the Telegram token or derived secret.
 

@@ -1,12 +1,16 @@
-import { cleanText, parseAmount } from './order-core.js';
+import { cleanText, normalizeUkrainianPhone, parseAmount } from './order-core.js';
 
 const API_ENDPOINT = 'https://api.novaposhta.ua/v2.0/json/';
 const MARKING_ENDPOINT = 'https://my.novaposhta.ua/orders';
+export const STANDARD_PARCEL = Object.freeze({
+  weight: 2,
+  dimensions: Object.freeze({ length: 44, width: 34, height: 5 })
+});
 let apiQueue = Promise.resolve();
 
-function apiKey(value = process.env.NOVA_POSHTA_API_KEY) {
+function apiKey(value = process.env.NOVA_POSHTA_API_KEY, allowAnonymous = false) {
   const key = cleanText(value, 120);
-  if (!key) throw new Error('nova_poshta_not_configured');
+  if (!key && !allowAnonymous) throw new Error('nova_poshta_not_configured');
   return key;
 }
 
@@ -29,10 +33,9 @@ export function isNovaPoshtaConfigured(value = process.env.NOVA_POSHTA_API_KEY) 
 }
 
 export function normalizeNovaPoshtaPhone(value) {
-  let digits = String(value ?? '').replace(/\D/g, '');
-  if (digits.length === 10 && digits.startsWith('0')) digits = `38${digits}`;
-  if (digits.length !== 12 || !digits.startsWith('380')) throw new Error('invalid_recipient_phone');
-  return digits;
+  const normalized = normalizeUkrainianPhone(value);
+  if (!normalized.valid) throw new Error('invalid_recipient_phone');
+  return normalized.phone.slice(1);
 }
 
 export function formatNovaPoshtaDate(date = new Date()) {
@@ -52,14 +55,14 @@ function isRateLimitResponse(result, data) {
 }
 
 async function novaPoshtaCallWithRetry(modelName, calledMethod, methodProperties = {}, options = {}) {
-  const key = apiKey(options.apiKey);
+  const key = apiKey(options.apiKey, options.allowAnonymousApiKey === true);
   const retryBaseDelayMs = Number.isFinite(Number(options.retryBaseDelayMs))
     ? Math.max(0, Number(options.retryBaseDelayMs))
     : 1500;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const result = await fetch(API_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify({ apiKey: key, modelName, calledMethod, methodProperties }),
       redirect: 'follow',
       signal: AbortSignal.timeout(25000)
@@ -109,7 +112,10 @@ async function resolveSender(options = {}) {
       Page: '1'
     }, options),
     senderWarehouseInput
-      ? resolveNovaPoshtaWarehouse(senderWarehouseInput.city, senderWarehouseInput.branch, options)
+      ? resolveNovaPoshtaWarehouse(senderWarehouseInput.city, senderWarehouseInput.branch, {
+        ...options,
+        settlementRef: options.senderSettlementRef
+      })
       : Promise.resolve(null)
   ]);
   const address = senderWarehouse || selectedByRef(addresses.data, options.senderAddressRef || process.env.NOVA_POSHTA_SENDER_ADDRESS_REF);
@@ -130,17 +136,23 @@ async function resolveSender(options = {}) {
   };
 }
 
-function recipientCityName(value) {
+export function recipientCityName(value) {
   return cleanText(value, 120)
     .split(',')[0]
-    .replace(/^(?:м\.?|місто|с\.?|село|смт\.?|селище)\s*/iu, '')
+    .replace(/^(?:(?:місто|село|селище)\s+|смт(?:\.\s*|\s+)|[мс](?:\.\s*|\s+))/iu, '')
     .trim();
 }
 
 function requestedWarehouseNumber(value) {
   const text = cleanText(value, 180);
-  const contextual = text.match(/(?:відділення|поштомат|нп|№)\s*№?\s*(\d+)/iu);
+  const contextual = text.match(
+    /(?:відділення|відд\.?|поштомат|нп|нова\s+пошта|номер|ном\.?|№|#)\s*(?:номер|ном\.?)?\s*[№#]?\s*(\d+)/iu
+  );
   if (contextual) return String(Number(contextual[1]));
+  const reversed = text.match(
+    /(?:№|#)?\s*(\d+)\s*(?:[-–—]?\s*(?:е|є|те|тє|ше))?\s*(?:відділення|відд\.?|поштомат|нп|нова\s+пошта)/iu
+  );
+  if (reversed) return String(Number(reversed[1]));
   const onlyNumber = text.match(/^#?\s*(\d+)\s*$/);
   return onlyNumber ? String(Number(onlyNumber[1])) : '';
 }
@@ -148,42 +160,159 @@ function requestedWarehouseNumber(value) {
 export async function searchNovaPoshtaSettlements(cityValue, options = {}) {
   const city = recipientCityName(cityValue);
   if (!city) throw new Error('nova_poshta_destination_missing');
-  const response = await novaPoshtaCall('AddressGeneral', 'searchSettlements', {
+  const methodProperties = {
     CityName: city,
     Limit: '20',
     Page: '1'
-  }, options);
-  return response.data
+  };
+  const addresses = (response) => response.data
     .flatMap((item) => Array.isArray(item?.Addresses) ? item.Addresses : [])
     .filter((item) => item?.DeliveryCity && (item?.Present || item?.MainDescription));
+  const response = await novaPoshtaCall('AddressGeneral', 'searchSettlements', methodProperties, options);
+  const authenticatedResults = addresses(response);
+  if (authenticatedResults.length || options.allowAnonymousDirectoryFallback === false) {
+    return authenticatedResults;
+  }
+
+  // Nova Poshta can occasionally return an empty settlement list for a valid
+  // business API key while the same public directory request contains the
+  // village. Directory lookups are public, so retry only this read-only call
+  // without the key before reporting that the settlement does not exist.
+  const publicResponse = await novaPoshtaCall('AddressGeneral', 'searchSettlements', methodProperties, {
+    ...options,
+    apiKey: '',
+    allowAnonymousApiKey: true,
+    allowAnonymousDirectoryFallback: false
+  });
+  const publicResults = addresses(publicResponse);
+  if (publicResults.length) return publicResults;
+
+  // A second Nova Poshta directory method is required for a small number of
+  // villages that searchSettlements omits on some server/IP combinations.
+  const settlementsResponse = await novaPoshtaCall('AddressGeneral', 'getSettlements', {
+    FindByString: city,
+    Limit: '50',
+    Page: '1'
+  }, {
+    ...options,
+    apiKey: '',
+    allowAnonymousApiKey: true,
+    allowAnonymousDirectoryFallback: false
+  });
+  return settlementsResponse.data
+    .filter((item) => item?.Ref && item?.Description)
+    .map((item) => ({
+      ...item,
+      DeliveryCity: item.DeliveryCity || item.Ref,
+      MainDescription: item.MainDescription || item.Description,
+      Present: item.Present || [
+        item.SettlementTypeDescription,
+        item.Description,
+        item.RegionsDescription ? `${item.RegionsDescription} р-н` : '',
+        item.AreaDescription ? `${item.AreaDescription} обл.` : ''
+      ].filter(Boolean).join(', ')
+    }));
 }
 
 function settlementTypePrefix(value) {
-  const match = cleanText(value, 120).match(/^(м\.?|с\.?|смт\.?)/iu);
-  return match ? match[1].toLocaleLowerCase('uk-UA').replace('.', '') : '';
+  const match = cleanText(value, 120).match(
+    /^(місто(?=\s)|м(?=\.|\s)|село(?=\s)|с(?=\.|\s)|селище(?=\s)|смт(?=\.|\s))/iu
+  );
+  if (!match) return '';
+  const type = match[1].toLocaleLowerCase('uk-UA').replace('.', '');
+  if (type === 'місто') return 'м';
+  if (type === 'село') return 'с';
+  if (type === 'селище') return 'смт';
+  return type;
 }
 
-async function resolveSettlement(cityValue, options = {}) {
+function normalizedSettlementText(value) {
+  return cleanText(value, 300)
+    .toLocaleLowerCase('uk-UA')
+    .replace(/[.’'`]/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function settlementContextScore(item, cityValue) {
+  const city = recipientCityName(cityValue);
+  const context = normalizedSettlementText(cityValue)
+    .replace(normalizedSettlementText(city), '')
+    .split(' ')
+    .filter((token) => token.length >= 3 && ![
+      'місто', 'село', 'селище', 'область', 'обл', 'район', 'рн'
+    ].includes(token));
+  if (!context.length) return 0;
+  const present = normalizedSettlementText([
+    item.Present,
+    item.Description,
+    item.Area,
+    item.AreaDescription,
+    item.Region,
+    item.RegionsDescription,
+    item.ParentRegionTypes,
+    item.ParentRegionCode,
+    item.SettlementTypeDescription
+  ].filter(Boolean).join(' '));
+  const presentTokens = present.split(' ').filter(Boolean);
+  return context.reduce((score, token) => {
+    const matched = presentTokens.some((candidate) => (
+      candidate === token ||
+      (candidate.length >= 6 && token.length >= 6 && candidate.slice(0, 6) === token.slice(0, 6))
+    ));
+    return score + (matched ? 1 : 0);
+  }, 0);
+}
+
+function settlementChoice(item) {
+  return {
+    Ref: cleanText(item?.Ref || item?.DeliveryCity, 60),
+    Description: cleanText(item?.Present || item?.MainDescription, 180)
+  };
+}
+
+export async function resolveNovaPoshtaSettlement(cityValue, options = {}) {
   const city = recipientCityName(cityValue).toLocaleLowerCase('uk-UA');
   const settlements = await searchNovaPoshtaSettlements(cityValue, options);
+  const configuredRef = cleanText(options.settlementRef, 60);
+  if (configuredRef) {
+    const configured = settlements.find(
+      (item) => item.Ref === configuredRef || item.DeliveryCity === configuredRef
+    );
+    if (configured) return configured;
+    throw new Error('nova_poshta_city_not_found');
+  }
   const exact = settlements.filter(
     (item) => cleanText(item.MainDescription, 120).toLocaleLowerCase('uk-UA') === city
   );
-  const candidates = exact.length ? exact : settlements;
+  let candidates = exact.length ? exact : settlements;
   const requestedType = settlementTypePrefix(cityValue);
-  const selected = candidates.find((item) => {
-    const presentType = settlementTypePrefix(item.Present);
-    return requestedType ? presentType === requestedType : presentType === 'м';
-  }) || candidates[0];
-  if (!selected) throw new Error('nova_poshta_city_not_found');
-  return selected;
+  if (requestedType) {
+    const sameType = candidates.filter((item) => settlementTypePrefix(item.Present) === requestedType);
+    if (sameType.length) candidates = sameType;
+  } else {
+    const cities = candidates.filter((item) => settlementTypePrefix(item.Present) === 'м');
+    if (cities.length === 1) return cities[0];
+  }
+  if (!candidates.length) throw new Error('nova_poshta_city_not_found');
+  if (candidates.length === 1) return candidates[0];
+
+  const ranked = candidates
+    .map((item) => ({ item, score: settlementContextScore(item, cityValue) }))
+    .sort((left, right) => right.score - left.score);
+  if (ranked[0].score > 0 && ranked[0].score > ranked[1].score) return ranked[0].item;
+
+  const error = new Error('nova_poshta_city_ambiguous');
+  error.settlements = candidates.slice(0, 10).map(settlementChoice);
+  throw error;
 }
 
 export async function listNovaPoshtaWarehouses(cityValue, options = {}) {
   const city = recipientCityName(cityValue);
-  const settlement = await resolveSettlement(cityValue, options);
+  const settlement = await resolveNovaPoshtaSettlement(cityValue, options);
   const response = await novaPoshtaCall('AddressGeneral', 'getWarehouses', {
     CityRef: settlement.DeliveryCity,
+    SettlementRef: settlement.Ref,
     CityName: city,
     Page: '1',
     Limit: '500',
@@ -260,10 +389,11 @@ export async function resolveNovaPoshtaWarehouse(cityValue, queryValue, options 
   const city = recipientCityName(cityValue);
   const query = cleanText(queryValue, 180);
   if (!city || !query) throw new Error('nova_poshta_destination_missing');
-  const settlement = await resolveSettlement(cityValue, options);
+  const settlement = await resolveNovaPoshtaSettlement(cityValue, options);
   const number = requestedWarehouseNumber(query);
   const baseProperties = {
     CityRef: settlement.DeliveryCity,
+    SettlementRef: settlement.Ref,
     CityName: city,
     Page: '1',
     Limit: '50',
@@ -303,14 +433,17 @@ export async function resolveNovaPoshtaWarehouse(cityValue, queryValue, options 
 }
 
 async function resolveRecipientWarehouse(order, options = {}) {
-  return resolveNovaPoshtaWarehouse(order.city, order.branch, options);
+  return resolveNovaPoshtaWarehouse(order.city, order.branch, {
+    ...options,
+    settlementRef: options.recipientSettlementRef
+  });
 }
 
 function configuredDimensions(options = {}) {
   return {
-    length: positiveNumber(options.length || process.env.NOVA_POSHTA_DEFAULT_LENGTH_CM, 40),
-    width: positiveNumber(options.width || process.env.NOVA_POSHTA_DEFAULT_WIDTH_CM, 30),
-    height: positiveNumber(options.height || process.env.NOVA_POSHTA_DEFAULT_HEIGHT_CM, 20)
+    length: positiveNumber(options.length, STANDARD_PARCEL.dimensions.length),
+    width: positiveNumber(options.width, STANDARD_PARCEL.dimensions.width),
+    height: positiveNumber(options.height, STANDARD_PARCEL.dimensions.height)
   };
 }
 
@@ -319,11 +452,18 @@ export async function prepareNovaPoshtaShipment(order, options = {}) {
   const codAmount = parseAmount(order?.codAmount);
   if (totalAmount === null || codAmount === null || totalAmount <= 0) throw new Error('invalid_order_amounts');
   const [sender, warehouse] = await Promise.all([
-    resolveSender(options),
-    resolveRecipientWarehouse(order, options)
+    resolveSender(options).catch((error) => {
+      if (error?.message === 'nova_poshta_city_ambiguous') error.settlementRole = 'sender';
+      throw error;
+    }),
+    resolveRecipientWarehouse(order, options).catch((error) => {
+      if (error?.message === 'nova_poshta_city_ambiguous') error.settlementRole = 'recipient';
+      throw error;
+    })
   ]);
   return {
     orderId: cleanText(order.id, 40),
+    customerOrderNumber: cleanText(order.customerOrderNumber, 40),
     recipientName: cleanText(order.customerName, 120),
     recipientPhone: normalizeNovaPoshtaPhone(order.phone),
     recipientCityName: cleanText(warehouse.SettlementDescription || warehouse.CityDescription, 120),
@@ -335,7 +475,9 @@ export async function prepareNovaPoshtaShipment(order, options = {}) {
     warehouseDescription: cleanText(warehouse.Description || warehouse.ShortAddress, 180),
     totalAmount,
     codAmount,
-    weight: positiveNumber(options.weight || process.env.NOVA_POSHTA_DEFAULT_WEIGHT_KG),
+    // MIVA's standard parcel. The Telegram preview still lets the operator
+    // override this value and the dimensions before the TTN is created.
+    weight: positiveNumber(options.weight, STANDARD_PARCEL.weight),
     dimensions: configuredDimensions(options),
     seatsAmount: 1,
     description: cleanText(
@@ -392,17 +534,36 @@ export function buildInternetDocumentPayload(shipment, date = new Date()) {
     }]
   };
   if (Number(shipment.codAmount) > 0) {
-    methodProperties.BackwardDeliveryData = [{
-      PayerType: 'Recipient',
-      CargoType: 'Money',
-      RedeliveryString: String(Number(shipment.codAmount).toFixed(2))
-    }];
+    methodProperties.AfterpaymentOnGoodsCost = String(Number(shipment.codAmount).toFixed(2));
   }
   return methodProperties;
 }
 
 export async function createNovaPoshtaWaybill(shipment, options = {}) {
-  const response = await novaPoshtaCall('InternetDocumentGeneral', 'save', buildInternetDocumentPayload(shipment), options);
+  const payload = buildInternetDocumentPayload(shipment);
+  let response;
+  try {
+    response = await novaPoshtaCall('InternetDocumentGeneral', 'save', payload, options);
+  } catch (error) {
+    // Nova Poshta occasionally rejects a perfectly ordinary dynamic cargo
+    // description with only the generic "Description is not valid" reply.
+    // A single retry with our registered generic product category lets the
+    // operator continue without re-entering the whole order. This happens
+    // only after a rejected response, so it cannot create a second TTN.
+    if (cleanText(error?.publicMessage, 180).toLowerCase() !== 'description is not valid') throw error;
+    const orderNumber = cleanText(shipment?.customerOrderNumber || shipment?.orderId, 40)
+      .replace(/\D/gu, '')
+      .slice(0, 12);
+    const fallbackPayload = {
+      ...payload,
+      Description: cleanText(`Постільна білизна${orderNumber ? ` ${orderNumber}` : ''}`, 36)
+    };
+    console.warn('nova_poshta_description_fallback', JSON.stringify({
+      attemptedDescription: payload.Description,
+      fallbackDescription: fallbackPayload.Description
+    }));
+    response = await novaPoshtaCall('InternetDocumentGeneral', 'save', fallbackPayload, options);
+  }
   const document = response.data[0];
   if (!document?.IntDocNumber || !document?.Ref) throw new Error('nova_poshta_waybill_missing');
   return {
@@ -414,6 +575,45 @@ export async function createNovaPoshtaWaybill(shipment, options = {}) {
   };
 }
 
+function markingDocument(number, zebra, response) {
+  if (!response.ok) throw new Error('nova_poshta_marking_failed');
+  return response.arrayBuffer().then((bytes) => {
+    if (!bytes.byteLength || bytes.byteLength > 20 * 1024 * 1024) {
+      throw new Error('nova_poshta_marking_invalid');
+    }
+    return {
+      bytes,
+      mimeType: response.headers.get('content-type')?.split(';')[0] || 'application/pdf',
+      filename: `NovaPoshta-${number}-${zebra ? '100x100' : 'A4'}.pdf`
+    };
+  });
+}
+
+async function downloadMarkingViaApi(number, key, zebra) {
+  const response = await fetch(API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      Accept: 'application/pdf, application/json'
+    },
+    body: JSON.stringify({
+      apiKey: key,
+      modelName: 'InternetDocument',
+      calledMethod: 'printMarkings',
+      methodProperties: {
+        DocumentRefs: [number],
+        // `pdf` is the broadly supported format in the public API. The
+        // legacy endpoint below still keeps the dedicated 100x100 layout.
+        Type: 'pdf'
+      }
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const contentType = response.headers.get('content-type') || '';
+  if (/application\/pdf/i.test(contentType)) return markingDocument(number, zebra, response);
+  throw new Error('nova_poshta_marking_failed');
+}
+
 export async function downloadNovaPoshtaMarking(ttn, format = 'a4', options = {}) {
   const key = apiKey(options.apiKey);
   const number = cleanText(ttn, 40);
@@ -422,16 +622,28 @@ export async function downloadNovaPoshtaMarking(ttn, format = 'a4', options = {}
   const path = zebra
     ? `printMarking100x100/orders/${encodeURIComponent(number)}/type/pdf/apiKey/${encodeURIComponent(key)}/zebra`
     : `printMarking85x85/orders/${encodeURIComponent(number)}/type/pdf8/apiKey/${encodeURIComponent(key)}`;
-  const response = await fetch(`${MARKING_ENDPOINT}/${path}`, {
-    redirect: 'follow',
-    signal: AbortSignal.timeout(25000)
-  });
-  if (!response.ok) throw new Error('nova_poshta_marking_failed');
-  const bytes = await response.arrayBuffer();
-  if (!bytes.byteLength || bytes.byteLength > 20 * 1024 * 1024) throw new Error('nova_poshta_marking_invalid');
-  return {
-    bytes,
-    mimeType: response.headers.get('content-type')?.split(';')[0] || 'application/pdf',
-    filename: `NovaPoshta-${number}-${zebra ? '100x100' : 'A4'}.pdf`
-  };
+  try {
+    const response = await fetch(`${MARKING_ENDPOINT}/${path}`, {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000)
+    });
+    return await markingDocument(number, zebra, response);
+  } catch (error) {
+    // The legacy marking host occasionally drops the connection from cloud
+    // functions. Its JSON API equivalent avoids that host and returns the
+    // same PDF without exposing the API key to Telegram users.
+    if (error?.message === 'nova_poshta_marking_failed' || error?.message === 'nova_poshta_marking_invalid') {
+      throw error;
+    }
+    try {
+      return await downloadMarkingViaApi(number, key, zebra);
+    } catch (fallbackError) {
+      if (fallbackError?.message === 'nova_poshta_marking_failed' || fallbackError?.message === 'nova_poshta_marking_invalid') {
+        throw fallbackError;
+      }
+      const markingError = new Error('nova_poshta_marking_failed');
+      markingError.publicMessage = 'Сервіс друку Нової пошти тимчасово недоступний. Спробуйте ще раз за кілька хвилин.';
+      throw markingError;
+    }
+  }
 }

@@ -21,16 +21,43 @@ export function parseChatIds(value) {
 export function telegramClient(token) {
   if (!token) throw new Error('Telegram token is not configured');
   const baseUrl = `https://api.telegram.org/bot${token}`;
+  const retryableMethods = new Set([
+    'answerCallbackQuery',
+    'editMessageReplyMarkup',
+    'editMessageText',
+    'getFile',
+    'getWebhookInfo',
+    'setWebhook'
+  ]);
 
   async function call(method, payload) {
-    const result = await fetch(`${baseUrl}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await result.json().catch(() => ({}));
-    if (!result.ok || !data.ok) throw new Error(`Telegram ${method} failed`);
-    return data.result;
+    const maxAttempts = retryableMethods.has(method) ? 2 : 1;
+    let finalError = new Error(`Telegram ${method} failed`);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const result = await fetch(`${baseUrl}/${method}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15000)
+        });
+        const data = await result.json().catch(() => ({}));
+        if (!result.ok || !data.ok) {
+          const error = new Error(`Telegram ${method} failed: ${String(data?.description || result.status).slice(0, 160)}`);
+          error.retryable = result.status === 408 || result.status === 429 || result.status >= 500;
+          error.retryAfter = Number(data?.parameters?.retry_after) || 0;
+          throw error;
+        }
+        return data.result;
+      } catch (error) {
+        finalError = error;
+        const retryable = error?.retryable || error?.name === 'AbortError' || error?.name === 'TimeoutError' || error instanceof TypeError;
+        if (!retryable || attempt === maxAttempts - 1) break;
+        const delay = Math.min(Math.max(error?.retryAfter * 1000 || 250, 250), 3000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw finalError;
   }
 
   return {

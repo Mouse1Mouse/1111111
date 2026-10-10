@@ -77,7 +77,7 @@ export const handler = async (event) => {
       modifiedDate
     });
 
-    // Fiscal receipt delivery will be added after the SOTA/monobank PRRO link is enabled.
+    // Fiscal receipt delivery stays disabled until the CheckBox production switch is enabled.
     return response(200, { received: true });
   } catch (error) {
     console.error('Monobank webhook processing failed:', error.message);

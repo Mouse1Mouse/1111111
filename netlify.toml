@@ -1,9 +1,18 @@
 [build]
   publish = "dist"
-  command = "npm run build"
+  command = "pnpm run build"
 
 [build.environment]
   NODE_VERSION = "18"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions."sota-shift-reminder"]
+  schedule = "*/15 * * * *"
+
+[functions."novapay-monitor"]
+  schedule = "*/15 * * * *"
 
 [[forms]]
   name = "offline-order"

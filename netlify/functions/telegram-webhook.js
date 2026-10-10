@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import {
   ORDER_STATUSES,
   attachTtn,
+  calculateNovaPaySettlement,
   cleanText,
   createOrder,
   createOrderId,
@@ -15,9 +16,11 @@ import {
   markPrepaymentReceived,
   markReceiptDone,
   normalizeCustomerOrderNumber,
+  normalizeUkrainianPhone,
   parseAmount,
   parseTtnFromOrderCard,
-  statusLabel
+  statusLabel,
+  updateOrderDetails
 } from '../lib/order-core.js';
 import {
   applyPrepaymentChoice,
@@ -26,6 +29,25 @@ import {
   normalizeExtractedDraft
 } from '../lib/order-extractor.js';
 import { createPackingLabelDocument } from '../lib/packing-label.js';
+import {
+  confirmFiscalReceiptCatalog,
+  formatFiscalReceiptDraftHtml,
+  prepareFiscalReceiptDraft
+} from '../lib/fiscal-receipt.js';
+import {
+  DEFAULT_CHECKBOX_CASH_ID,
+  FISCAL_SHIFT_STATUSES,
+  cancelShiftClose,
+  cancelShiftOpen,
+  confirmShiftClose,
+  confirmShiftOpen,
+  createFiscalShiftState,
+  formatFiscalShiftHtml,
+  kyivDay,
+  requestShiftClose,
+  requestShiftOpen,
+  summarizeFiscalDay
+} from '../lib/fiscal-shift.js';
 import {
   createNovaPoshtaWaybill,
   downloadNovaPoshtaMarking,
@@ -36,11 +58,19 @@ import {
 } from '../lib/nova-poshta.js';
 import {
   clearSession,
+  claimAction,
   claimUpdate,
+  completeAction,
   connectOrderStore,
+  getAction,
+  getFiscalShiftState,
   getOrder,
   getSession,
+  listBotErrors,
   listOrders,
+  releaseAction,
+  saveBotError,
+  saveFiscalShiftState,
   saveOrder,
   saveSession
 } from '../lib/order-store.js';
@@ -65,6 +95,7 @@ function money(value) {
 const MENU_BUTTONS = Object.freeze({
   ADD: '📥 Додати замовлення',
   ORDERS: '📋 Активні замовлення',
+  CASH: '🧾 Каса і Z-звіт',
   HELP: 'ℹ️ Допомога',
   CANCEL: '❌ Скасувати'
 });
@@ -72,7 +103,8 @@ const MENU_BUTTONS = Object.freeze({
 const MAIN_KEYBOARD = Object.freeze({
   keyboard: [
     [{ text: MENU_BUTTONS.ADD }],
-    [{ text: MENU_BUTTONS.ORDERS }, { text: MENU_BUTTONS.HELP }]
+    [{ text: MENU_BUTTONS.ORDERS }, { text: MENU_BUTTONS.CASH }],
+    [{ text: MENU_BUTTONS.HELP }]
   ],
   resize_keyboard: true,
   is_persistent: true
@@ -95,8 +127,10 @@ const INPUT_SESSION_MODES = new Set([
   'await_np_weight',
   'await_np_dimensions',
   'await_ai_edit',
+  'await_order_edit',
   'await_ttn',
-  'await_receipt'
+  'await_receipt',
+  'await_z_report'
 ]);
 
 async function getSessionForModes(chatId, expectedModes) {
@@ -117,7 +151,7 @@ async function getSessionForInput(chatId) {
 function orderButtons(order) {
   const rows = [];
   if (order.status === ORDER_STATUSES.AWAITING_PREPAYMENT) {
-    rows.push([{ text: `✅ Отримано ${money(order.prepaymentAmount)}`, callback_data: `prepaid:${order.id}` }]);
+    rows.push([{ text: `✅ Monobank отримав ${money(order.prepaymentAmount)}`, callback_data: `prepaid:${order.id}` }]);
   }
   if ([ORDER_STATUSES.READY_TO_SHIP, ORDER_STATUSES.AWAITING_NOVAPAY].includes(order.status) && !order.ttn) {
     if (isNovaPoshtaConfigured()) {
@@ -132,10 +166,13 @@ function orderButtons(order) {
     ]);
   }
   if (order.status === ORDER_STATUSES.AWAITING_NOVAPAY) {
-    rows.push([{ text: `✅ NovaPay ${money(order.codAmount)}`, callback_data: `novapay:${order.id}` }]);
+    rows.push([{ text: `💰 Перевірити NovaPay ${money(order.codAmount)}`, callback_data: `novapay_check:${order.id}` }]);
   }
   if (order.status === ORDER_STATUSES.READY_FOR_RECEIPT) {
-    rows.push([{ text: '🧾 Чек пробито в СОТА', callback_data: `receipt:${order.id}` }]);
+    rows.push([{ text: '🧾 Перевірити чернетку CheckBox', callback_data: `fiscal_preview:${order.id}` }]);
+  }
+  if (!order.ttn && ![ORDER_STATUSES.CLOSED, ORDER_STATUSES.CANCELLED, ORDER_STATUSES.RECEIPT_DONE].includes(order.status)) {
+    rows.push([{ text: '✏️ Редагувати замовлення', callback_data: `order_edit:${order.id}` }]);
   }
   return rows.length ? { inline_keyboard: rows } : undefined;
 }
@@ -157,6 +194,63 @@ async function replaceOrSendMessage(bot, chatId, messageId, text, options = {}) 
   return bot.sendMessage(chatId, text, options);
 }
 
+function errorCategory(error, fallback = 'system') {
+  const code = String(error?.message || '');
+  if (code.includes('city')) return 'city';
+  if (code.includes('warehouse') || code.includes('destination')) return 'branch';
+  if (code.includes('phone')) return 'phone';
+  if (code.startsWith('ai_') || code.startsWith('order_text') || code.startsWith('image_')) return 'recognition';
+  if (code.startsWith('nova_poshta')) return 'nova_poshta';
+  return fallback;
+}
+
+async function logBotError(chatId, stage, error, order = null, details = {}) {
+  const entry = {
+    category: errorCategory(error, stage),
+    stage: cleanText(stage, 60),
+    orderId: cleanText(order?.id || details.orderId, 40),
+    chatId: String(chatId || ''),
+    code: cleanText(error?.message || 'unknown_error', 120),
+    reason: cleanText(error?.publicMessage || details.reason, 180),
+    city: cleanText(order?.city || details.city, 120),
+    branch: cleanText(order?.branch || details.branch, 180),
+    phone: cleanText(order?.phone || details.phone, 40),
+    shipmentDescription: cleanText(details.shipmentDescription, 80),
+    createdAt: new Date().toISOString()
+  };
+  console.error('bot_operation_failed', JSON.stringify(entry));
+  try {
+    await saveBotError(entry);
+  } catch (storeError) {
+    console.error('bot_error_log_failed', cleanText(storeError?.message, 120));
+  }
+}
+
+async function showErrorJournal(bot, chatId) {
+  const entries = await listBotErrors({ limit: 10 });
+  if (!entries.length) {
+    await bot.sendMessage(chatId, '✅ Журнал помилок порожній.');
+    return;
+  }
+  const labels = {
+    city: '🏙 Місто',
+    branch: '📦 Відділення',
+    phone: '📞 Телефон',
+    recognition: '🤖 Розпізнавання',
+    nova_poshta: '🚚 Нова пошта',
+    novapay_monitor: '💰 Моніторинг NovaPay',
+    system: '⚙️ Система'
+  };
+  const lines = entries.map((entry) => [
+    `<b>${labels[entry.category] || labels.system}</b> · ${escapeHtml(entry.orderId || 'без номера')}`,
+    `Причина: ${escapeHtml(entry.reason || entry.code || entry.message || 'невідома')}`,
+    entry.city ? `Місто: ${escapeHtml(entry.city)}` : '',
+    entry.branch ? `Відділення: ${escapeHtml(entry.branch)}` : '',
+    entry.phone ? `Телефон: ${escapeHtml(entry.phone)}` : ''
+  ].filter(Boolean).join('\n'));
+  await bot.sendMessage(chatId, `<b>🧰 Останні помилки бота</b>\n\n${lines.join('\n\n')}`);
+}
+
 function defaultSenderWarehouse() {
   return parseSenderWarehouseSelection(
     process.env.NOVA_POSHTA_DEFAULT_SENDER_WAREHOUSE || 'Нетішин, №2'
@@ -170,6 +264,7 @@ function shipmentErrorText(error) {
     nova_poshta_sender_details_missing: 'У відправника не знайдено адресу або контактну особу.',
     nova_poshta_destination_missing: 'У замовленні немає міста або відділення.',
     nova_poshta_city_not_found: 'Не вдалося знайти це місто в довіднику Нової пошти. Виправте назву міста в замовленні.',
+    nova_poshta_city_ambiguous: 'У довіднику Нової пошти є кілька населених пунктів із такою назвою.',
     nova_poshta_warehouse_not_found: 'Не вдалося знайти це відділення Нової пошти. Виправте місто або відділення в замовленні.',
     nova_poshta_warehouse_ambiguous: 'Знайдено кілька схожих відділень. Уточніть номер або адресу відділення в замовленні.',
     nova_poshta_rate_limited: 'Нова пошта тимчасово обмежила кількість API-запитів. Бот уже виконав автоматичні повтори.',
@@ -180,8 +275,55 @@ function shipmentErrorText(error) {
     nova_poshta_waybill_missing: 'Нова пошта не повернула номер ТТН.',
     nova_poshta_marking_failed: 'Не вдалося отримати етикетку Нової пошти.'
   };
-  const base = messages[error?.message] || 'Не вдалося виконати операцію з Новою поштою.';
-  return error?.publicMessage ? `${base}\n\n${cleanText(error.publicMessage, 180)}` : base;
+  const code = cleanText(error?.message, 180);
+  const base = messages[code] || 'Не вдалося виконати операцію з Новою поштою.';
+  const detail = cleanText(error?.publicMessage || (!messages[code] ? code : ''), 180);
+  return detail ? `${base}\n\nДеталі: ${detail}` : base;
+}
+
+function settlementButtonText(description) {
+  const text = cleanText(description, 180);
+  return [...text].slice(0, 60).join('');
+}
+
+async function promptForSettlementChoice(
+  bot,
+  chatId,
+  order,
+  error,
+  shipmentOptions = {},
+  messageId = null
+) {
+  const settlements = Array.isArray(error?.settlements)
+    ? error.settlements.filter((item) => item?.Ref && item?.Description).slice(0, 10)
+    : [];
+  if (error?.message !== 'nova_poshta_city_ambiguous' || !settlements.length) return false;
+
+  const settlementRole = error.settlementRole === 'sender' ? 'sender' : 'recipient';
+  await saveSession(chatId, {
+    mode: 'choose_np_settlement',
+    orderId: order.id,
+    settlementRole,
+    settlements,
+    shipmentOptions,
+    previewMessageId: messageId,
+    updatedAt: new Date().toISOString()
+  });
+  const heading = settlementRole === 'sender'
+    ? 'Знайдено кілька міст відправника. Оберіть правильне:'
+    : 'Знайдено кілька населених пунктів отримувача. Оберіть правильний район та область:';
+  await replaceOrSendMessage(bot, chatId, messageId, `<b>${heading}</b>`, {
+    reply_markup: {
+      inline_keyboard: [
+        ...settlements.map((item, index) => [{
+          text: settlementButtonText(item.Description),
+          callback_data: `np_city:${index}:${order.id}`
+        }]),
+        [{ text: '❌ Скасувати', callback_data: `np_cancel:${order.id}` }]
+      ]
+    }
+  });
+  return true;
 }
 
 function shipmentPreviewHtml(shipment) {
@@ -254,9 +396,11 @@ const HELP_TEXT = [
   '/new — ввести замовлення вручну по полях',
   '/orders — активні замовлення',
   '/order НОМЕР — відкрити замовлення',
+  '/cash — зміна CheckBox та Z-звіт',
+  '/errors — останні помилки бота',
   '/cancel — скасувати поточне введення',
   '',
-  'Бот веде замовлення та готує дані для чека. Сам чек у СОТА Каса поки не створює.'
+  'Бот веде замовлення, контролює зміну і Z-звіт та готує дані для чека. Інтеграція CheckBox готується; живі чеки ще не створюються автоматично.'
 ].join('\n');
 
 const STEPS = {
@@ -297,7 +441,7 @@ const STEPS = {
     next: 'prepaymentAmount'
   },
   prepaymentAmount: {
-    prompt: '7/8 Введіть передоплату на IBAN. Зазвичай 200:',
+    prompt: '7/8 Введіть передоплату на рахунок Monobank. Зазвичай 200:',
     validate: (value, draft) => {
       const amount = parseAmount(value);
       return amount !== null && amount >= 0 && amount <= parseAmount(draft.totalAmount);
@@ -359,6 +503,11 @@ const AI_EDIT_FIELDS = Object.freeze({
   },
   ttn: { key: 'ttn', label: 'ТТН', prompt: STEPS.ttn.prompt, validate: STEPS.ttn.validate }
 });
+
+const ORDER_EDIT_FIELDS = Object.freeze(Object.fromEntries(
+  ['name', 'phone', 'city', 'branch', 'items', 'total', 'prepay']
+    .map((key) => [key, AI_EDIT_FIELDS[key]])
+));
 
 const REQUIRED_FIELD_LABELS = Object.freeze({
   customerName: 'ім’я',
@@ -429,7 +578,7 @@ function formatAiDraftHtml(session) {
     '',
     `<b>Товари:</b> ${escapeHtml(draft.itemsSummary || 'не розпізнано')}`,
     `💰 Повна сума: <b>${amount(draft.totalAmount)}</b>`,
-    `🏦 Передоплата IBAN: <b>${needsPrepaymentChoice ? 'потрібно обрати' : amount(draft.prepaymentAmount)}</b>`,
+    `🏦 Передоплата Monobank: <b>${needsPrepaymentChoice ? 'потрібно обрати' : amount(draft.prepaymentAmount)}</b>`,
     `📮 Залишок NovaPay: <b>${novaPayAmount === null ? 'буде пораховано після вибору' : amount(novaPayAmount)}</b>`,
     `🚚 ТТН: ${escapeHtml(draft.ttn === '-' ? 'ще немає' : draft.ttn)}`
   ];
@@ -502,6 +651,7 @@ async function handleImageOrder(bot, chatId, message, image) {
     await saveSession(chatId, session);
     await sendAiDraftPreview(bot, chatId, session, statusMessage.message_id);
   } catch (error) {
+    await logBotError(chatId, 'recognition', error, null, { reason: 'Не вдалося розпізнати скрін замовлення.' });
     await clearSession(chatId);
     const messageText = error?.message === 'ai_gateway_not_configured'
       ? 'AI-розпізнавання ще не активоване в Netlify.'
@@ -536,6 +686,7 @@ async function handleTextOrder(bot, chatId, text, messageId = null) {
     await saveSession(chatId, session);
     await sendAiDraftPreview(bot, chatId, session, statusMessage.message_id);
   } catch (error) {
+    await logBotError(chatId, 'recognition', error, null, { reason: 'Не вдалося розпізнати текст замовлення.' });
     await clearSession(chatId);
     const messageText = error?.message === 'ai_gateway_not_configured'
       ? 'AI-розпізнавання ще не активоване в Netlify.'
@@ -579,14 +730,26 @@ async function handleNewOrderStep(bot, chatId, text, session) {
 
   const value = cleanText(text, session.step === 'itemsSummary' ? 1200 : 180);
   if (!config.validate(value, session.draft)) {
-    await bot.sendMessage(chatId, `${config.error}\n\n${config.prompt}`);
+    const normalizedPhone = session.step === 'phone' ? normalizeUkrainianPhone(value) : null;
+    const errorText = normalizedPhone?.missingDigits
+      ? `Телефон неповний — не вистачає ${normalizedPhone.missingDigits} цифр.`
+      : config.error;
+    await bot.sendMessage(chatId, `${errorText}\n\n${config.prompt}`);
     return;
   }
 
-  const storedValue = session.step === 'customerOrderNumber' && value === '-' ? '' : value;
+  let storedValue = session.step === 'customerOrderNumber' && value === '-' ? '' : value;
+  const normalizedPhone = session.step === 'phone' ? normalizeUkrainianPhone(value) : null;
+  if (normalizedPhone?.valid) storedValue = normalizedPhone.phone;
   const draft = { ...session.draft, [session.step]: storedValue };
   if (config.next) {
     await saveSession(chatId, { ...session, step: config.next, draft, updatedAt: new Date().toISOString() });
+    if (normalizedPhone?.corrected) {
+      await bot.sendMessage(
+        chatId,
+        `⚠️ Телефон виправлено: <b>${escapeHtml(normalizedPhone.input)}</b> → <b>${escapeHtml(normalizedPhone.phone)}</b>`
+      );
+    }
     await bot.sendMessage(chatId, STEPS[config.next].prompt);
     return;
   }
@@ -636,8 +799,10 @@ async function handleSessionInput(bot, chatId, text, session) {
       session.previewMessageId,
       '⏳ Перевіряю відправника, обидва відділення та контактні дані в Новій пошті…'
     );
+    const shipmentOptions = { senderWarehouse };
+    let shipment = null;
     try {
-      const shipment = await prepareNovaPoshtaShipment(order, { senderWarehouse });
+      shipment = await prepareNovaPoshtaShipment(order, shipmentOptions);
       const updatedSession = {
         ...session,
         mode: 'confirm_nova_poshta_ttn',
@@ -648,6 +813,15 @@ async function handleSessionInput(bot, chatId, text, session) {
       await saveSession(chatId, updatedSession);
       await sendShipmentPreview(bot, chatId, shipment, session.previewMessageId);
     } catch (error) {
+      await logBotError(chatId, 'nova_poshta', error, order, { shipmentDescription: shipment?.description });
+      if (await promptForSettlementChoice(
+        bot,
+        chatId,
+        order,
+        error,
+        shipmentOptions,
+        session.previewMessageId
+      )) return;
       const retryText = error?.message === 'nova_poshta_rate_limited'
         ? 'Зачекайте 30 секунд і введіть те саме відділення ще раз.'
         : 'Спробуйте інше місто або номер відділення.';
@@ -657,6 +831,50 @@ async function handleSessionInput(bot, chatId, text, session) {
         session.previewMessageId,
         `❌ ${escapeHtml(shipmentErrorText(error))}\n\n${retryText}`
       );
+    }
+    return;
+  }
+
+  if (session.mode === 'await_np_city_correction') {
+    const city = cleanText(text, 120);
+    const order = await getOrder(session.orderId);
+    if (!order || order.status !== ORDER_STATUSES.READY_TO_SHIP || order.ttn) {
+      await clearSession(chatId);
+      await bot.sendMessage(chatId, 'Замовлення вже не готове до створення нової ТТН. Відкрийте його ще раз.');
+      return;
+    }
+    if (city.length < 2 || city === '-') {
+      await bot.sendMessage(chatId, 'Введіть повну назву міста або села, наприклад: Софіївська Борщагівка.');
+      return;
+    }
+
+    let updated;
+    try {
+      updated = updateOrderDetails(order, { city });
+      await saveOrder(updated);
+      const shipment = await prepareNovaPoshtaShipment(updated, session.shipmentOptions || {});
+      const nextSession = {
+        mode: 'confirm_nova_poshta_ttn',
+        orderId: updated.id,
+        senderWarehouse: session.senderWarehouse || defaultSenderWarehouse(),
+        shipmentOptions: session.shipmentOptions || {},
+        shipment,
+        previewMessageId: session.previewMessageId,
+        updatedAt: new Date().toISOString()
+      };
+      await saveSession(chatId, nextSession);
+      await sendShipmentPreview(bot, chatId, shipment, session.previewMessageId);
+    } catch (error) {
+      await logBotError(chatId, 'nova_poshta', error, updated || order, { city });
+      if (await promptForSettlementChoice(
+        bot,
+        chatId,
+        updated || order,
+        error,
+        session.shipmentOptions || {},
+        session.previewMessageId
+      )) return;
+      await bot.sendMessage(chatId, `❌ ${escapeHtml(shipmentErrorText(error))}\n\nВведіть назву міста ще раз або скористайтеся «Редагувати замовлення».`);
     }
     return;
   }
@@ -700,7 +918,11 @@ async function handleSessionInput(bot, chatId, text, session) {
     const config = AI_EDIT_FIELDS[session.field];
     const value = cleanText(text, config?.key === 'itemsSummary' ? 1200 : 180);
     if (!config || !config.validate(value, session.draft)) {
-      await bot.sendMessage(chatId, `Значення не підходить.\n\n${config?.prompt || 'Спробуйте ще раз:'}`);
+      const normalizedPhone = config?.key === 'phone' ? normalizeUkrainianPhone(value) : null;
+      const errorText = normalizedPhone?.missingDigits
+        ? `Телефон неповний — не вистачає ${normalizedPhone.missingDigits} цифр.`
+        : 'Значення не підходить.';
+      await bot.sendMessage(chatId, `${errorText}\n\n${config?.prompt || 'Спробуйте ще раз:'}`);
       return;
     }
 
@@ -708,6 +930,8 @@ async function handleSessionInput(bot, chatId, text, session) {
     if (config.key === 'customerOrderNumber') {
       storedValue = value === '-' ? '' : normalizeCustomerOrderNumber(value);
     }
+    const normalizedPhone = config.key === 'phone' ? normalizeUkrainianPhone(value) : null;
+    if (normalizedPhone?.valid) storedValue = normalizedPhone.phone;
     if (['instagramHandle', 'city', 'branch'].includes(config.key) && value === '-') storedValue = '';
     if (['totalAmount', 'prepaymentAmount'].includes(config.key)) storedValue = parseAmount(value);
     const updatedDraft = config.key === 'prepaymentAmount'
@@ -720,11 +944,63 @@ async function handleSessionInput(bot, chatId, text, session) {
       draft: updatedDraft,
       warnings: config.key === 'prepaymentAmount'
         ? warningsAfterPrepaymentChoice(session.warnings)
-        : session.warnings,
+        : config.key === 'phone' && normalizedPhone?.corrected
+          ? [...(session.warnings || []).filter((warning) => !warning.startsWith('Телефон ')),
+            `Телефон виправлено: ${normalizedPhone.input} → ${normalizedPhone.phone}.`]
+          : session.warnings,
       updatedAt: new Date().toISOString()
     };
     await saveSession(chatId, updatedSession);
     await sendAiDraftPreview(bot, chatId, updatedSession, session.previewMessageId);
+    return;
+  }
+
+  if (session.mode === 'await_order_edit') {
+    const config = ORDER_EDIT_FIELDS[session.field];
+    const order = await getOrder(session.orderId);
+    if (!config || !order) {
+      await clearSession(chatId);
+      await bot.sendMessage(chatId, 'Редагування вже неактуальне. Відкрийте замовлення ще раз.');
+      return;
+    }
+    const value = cleanText(text, config.key === 'itemsSummary' ? 1200 : 180);
+    if (!config.validate(value, order)) {
+      const normalizedPhone = config.key === 'phone' ? normalizeUkrainianPhone(value) : null;
+      const errorText = normalizedPhone?.missingDigits
+        ? `Телефон неповний — не вистачає ${normalizedPhone.missingDigits} цифр.`
+        : 'Значення не підходить.';
+      if (config.key === 'phone') {
+        await logBotError(chatId, 'phone', new Error('invalid_recipient_phone'), order, { phone: value, reason: errorText });
+      }
+      await bot.sendMessage(chatId, `${errorText}\n\n${config.prompt}`);
+      return;
+    }
+
+    let storedValue = value;
+    const normalizedPhone = config.key === 'phone' ? normalizeUkrainianPhone(value) : null;
+    if (normalizedPhone?.valid) storedValue = normalizedPhone.phone;
+    if (['totalAmount', 'prepaymentAmount'].includes(config.key)) storedValue = parseAmount(value);
+    try {
+      const updated = updateOrderDetails(order, { [config.key]: storedValue });
+      await saveOrder(updated);
+      await clearSession(chatId);
+      const correction = normalizedPhone?.corrected
+        ? `\n\n⚠️ Телефон виправлено: ${escapeHtml(normalizedPhone.input)} → ${escapeHtml(normalizedPhone.phone)}`
+        : '';
+      await replaceOrSendMessage(
+        bot,
+        chatId,
+        session.previewMessageId,
+        `${formatOrderHtml(updated)}\n\n✅ Поле «${escapeHtml(config.label)}» оновлено.${correction}`,
+        { reply_markup: orderButtons(updated) }
+      );
+    } catch (error) {
+      const message = error?.message === 'Order already has TTN'
+        ? 'Замовлення вже має ТТН. Спочатку змініть дані в Новій пошті або створіть нове замовлення.'
+        : 'Не вдалося зберегти зміну. Перевірте суму та передоплату.';
+      await logBotError(chatId, 'edit_order', error, order);
+      await bot.sendMessage(chatId, `${message}\n\n${config.prompt}`);
+    }
     return;
   }
 
@@ -735,7 +1011,7 @@ async function handleSessionInput(bot, chatId, text, session) {
     }
     const order = await getOrder(session.orderId);
     if (!order) throw new Error('Order not found');
-    const updated = attachTtn(order, text);
+    const updated = prepareFiscalReceiptDraft(attachTtn(order, text));
     await saveOrder(updated);
     await clearSession(chatId);
     await sendMainMenu(bot, chatId, '✅ ТТН додано.');
@@ -750,6 +1026,44 @@ async function handleSessionInput(bot, chatId, text, session) {
     await saveOrder(updated);
     await clearSession(chatId);
     await sendMainMenu(bot, chatId, `✅ Замовлення закрито. Записано чек <b>${escapeHtml(updated.receiptNumber)}</b>.`);
+    return;
+  }
+
+  if (session.mode === 'await_z_report') {
+    const state = await loadFiscalShift();
+    if (state.status !== FISCAL_SHIFT_STATUSES.CLOSING) {
+      await clearSession(chatId);
+      await showFiscalShift(bot, chatId, session.previewMessageId, 'Це закриття вже неактуальне.');
+      return;
+    }
+    const zReportNumber = cleanText(text, 100);
+    if (zReportNumber.length < 3) {
+      await bot.sendMessage(chatId, 'Введіть номер Z-звіту з CheckBox (щонайменше 3 символи).');
+      return;
+    }
+    const claimed = await claimAction('checkbox_shift_close', state.cashId);
+    if (!claimed) {
+      await bot.sendMessage(chatId, 'Закриття вже обробляється. Зачекайте кілька секунд і натисніть «Каса і Z-звіт».');
+      return;
+    }
+    try {
+      const summary = await loadFiscalDaySummary();
+      const closed = confirmShiftClose(state, {
+        zReportNumber,
+        summary,
+        chatId
+      });
+      await saveFiscalShiftState(closed);
+      await clearSession(chatId);
+      await showFiscalShift(
+        bot,
+        chatId,
+        session.previewMessageId,
+        `✅ Зміну закрито. Z-звіт <b>${escapeHtml(closed.lastZReport.number)}</b> записано.`
+      );
+    } finally {
+      await releaseAction('checkbox_shift_close', state.cashId);
+    }
     return;
   }
 
@@ -769,6 +1083,45 @@ async function showOrders(bot, chatId) {
   ].join('\n'));
   await bot.sendMessage(chatId, `<b>Активні замовлення</b>\n\n${lines.join('\n\n')}`, {
     reply_markup: MAIN_KEYBOARD
+  });
+}
+
+function checkboxCashId() {
+  return cleanText(process.env.CHECKBOX_CASH_ID, 40) || DEFAULT_CHECKBOX_CASH_ID;
+}
+
+async function loadFiscalShift() {
+  const cashId = checkboxCashId();
+  return await getFiscalShiftState(cashId) || createFiscalShiftState(cashId);
+}
+
+async function loadFiscalDaySummary(fiscalDay = kyivDay()) {
+  const orders = await listOrders({ includeClosed: true, limit: 100 });
+  return summarizeFiscalDay(orders, fiscalDay);
+}
+
+function fiscalShiftButtons(state) {
+  const rows = [[{ text: '🔄 Оновити стан', callback_data: 'cash_panel:current' }]];
+  if (state.status === FISCAL_SHIFT_STATUSES.CLOSED) {
+    rows.push([{ text: '▶️ Підготувати відкриття зміни', callback_data: 'cash_open_prepare:current' }]);
+  } else if (state.status === FISCAL_SHIFT_STATUSES.OPENING) {
+    rows.push([{ text: '✅ Зміну відкрито в CheckBox', callback_data: 'cash_open_confirm:current' }]);
+    rows.push([{ text: '↩️ Скасувати відкриття', callback_data: 'cash_open_cancel:current' }]);
+  } else if (state.status === FISCAL_SHIFT_STATUSES.OPEN) {
+    rows.push([{ text: '🛑 Підготувати закриття і Z-звіт', callback_data: 'cash_close_prepare:current' }]);
+  } else if (state.status === FISCAL_SHIFT_STATUSES.CLOSING) {
+    rows.push([{ text: '✅ Ввести номер готового Z-звіту', callback_data: 'cash_z_enter:current' }]);
+    rows.push([{ text: '↩️ Скасувати закриття', callback_data: 'cash_close_cancel:current' }]);
+  }
+  return { inline_keyboard: rows };
+}
+
+async function showFiscalShift(bot, chatId, messageId = null, notice = '') {
+  const state = await loadFiscalShift();
+  const summary = await loadFiscalDaySummary();
+  const text = [notice, formatFiscalShiftHtml(state, summary)].filter(Boolean).join('\n\n');
+  await replaceOrSendMessage(bot, chatId, messageId, text, {
+    reply_markup: fiscalShiftButtons(state)
   });
 }
 
@@ -813,6 +1166,14 @@ async function handleMessage(bot, message) {
     await showOrders(bot, chatId);
     return;
   }
+  if (/^\/cash(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.CASH) {
+    await showFiscalShift(bot, chatId);
+    return;
+  }
+  if (/^\/errors(?:@\w+)?$/i.test(text)) {
+    await showErrorJournal(bot, chatId);
+    return;
+  }
   if (/^\/cancel(?:@\w+)?$/i.test(text) || text === MENU_BUTTONS.CANCEL) {
     await clearSession(chatId);
     await sendMainMenu(bot, chatId, 'Поточне введення скасовано.');
@@ -840,7 +1201,11 @@ async function handleCallback(bot, callback) {
   const callbackParts = String(callback.data || '').split(':');
   const action = callbackParts[0];
   const id = callbackParts.at(-1);
-  await bot.answerCallbackQuery(callback.id);
+  try {
+    await bot.answerCallbackQuery(callback.id);
+  } catch (error) {
+    console.warn('telegram_callback_ack_failed', cleanText(error?.message, 120));
+  }
 
   if (action === 'discard') {
     await clearSession(chatId);
@@ -1094,9 +1459,234 @@ async function handleCallback(bot, callback) {
     return;
   }
 
+  if (action === 'cash_panel') {
+    await showFiscalShift(bot, chatId, callback.message?.message_id);
+    return;
+  }
+
+  if (action === 'cash_open_prepare') {
+    const state = await loadFiscalShift();
+    const claimed = await claimAction('checkbox_shift_open', state.cashId);
+    if (!claimed) {
+      await bot.sendMessage(chatId, 'Відкриття зміни вже обробляється. Зачекайте кілька секунд.');
+      return;
+    }
+    try {
+      const updated = requestShiftOpen(state, { chatId });
+      await saveFiscalShiftState(updated);
+      await showFiscalShift(
+        bot,
+        chatId,
+        callback.message?.message_id,
+        '1️⃣ Відкрийте зміну в CheckBox.\n2️⃣ Лише після успішного відкриття натисніть кнопку підтвердження нижче.'
+      );
+    } finally {
+      await releaseAction('checkbox_shift_open', state.cashId);
+    }
+    return;
+  }
+
+  if (action === 'cash_open_confirm') {
+    const state = await loadFiscalShift();
+    const claimed = await claimAction('checkbox_shift_open', state.cashId);
+    if (!claimed) {
+      await bot.sendMessage(chatId, 'Підтвердження вже обробляється. Зачекайте кілька секунд.');
+      return;
+    }
+    try {
+      const updated = confirmShiftOpen(state, { chatId });
+      await saveFiscalShiftState(updated);
+      await showFiscalShift(bot, chatId, callback.message?.message_id, '✅ Відкриту зміну зафіксовано в боті.');
+    } finally {
+      await releaseAction('checkbox_shift_open', state.cashId);
+    }
+    return;
+  }
+
+  if (action === 'cash_open_cancel') {
+    const state = await loadFiscalShift();
+    await saveFiscalShiftState(cancelShiftOpen(state));
+    await showFiscalShift(bot, chatId, callback.message?.message_id, 'Відкриття зміни скасовано.');
+    return;
+  }
+
+  if (action === 'cash_close_prepare') {
+    const state = await loadFiscalShift();
+    const claimed = await claimAction('checkbox_shift_close', state.cashId);
+    if (!claimed) {
+      await bot.sendMessage(chatId, 'Закриття зміни вже обробляється. Зачекайте кілька секунд.');
+      return;
+    }
+    try {
+      const summary = await loadFiscalDaySummary();
+      const updated = requestShiftClose(state, summary);
+      await saveFiscalShiftState(updated);
+      await showFiscalShift(
+        bot,
+        chatId,
+        callback.message?.message_id,
+        '1️⃣ Перевірте підсумок нижче.\n2️⃣ У CheckBox сформуйте Z-звіт і закрийте зміну.\n3️⃣ Після успіху введіть номер готового Z-звіту кнопкою нижче.'
+      );
+    } finally {
+      await releaseAction('checkbox_shift_close', state.cashId);
+    }
+    return;
+  }
+
+  if (action === 'cash_z_enter') {
+    const state = await loadFiscalShift();
+    if (state.status !== FISCAL_SHIFT_STATUSES.CLOSING) {
+      await showFiscalShift(bot, chatId, callback.message?.message_id, 'Закриття зміни ще не підготовлено.');
+      return;
+    }
+    await saveSession(chatId, {
+      mode: 'await_z_report',
+      cashId: state.cashId,
+      previewMessageId: callback.message?.message_id,
+      updatedAt: new Date().toISOString()
+    });
+    await bot.sendMessage(chatId, 'Введіть фіскальний номер сформованого Z-звіту із CheckBox:', {
+      reply_markup: CANCEL_KEYBOARD
+    });
+    return;
+  }
+
+  if (action === 'cash_close_cancel') {
+    const state = await loadFiscalShift();
+    await saveFiscalShiftState(cancelShiftClose(state));
+    await clearSession(chatId);
+    await showFiscalShift(bot, chatId, callback.message?.message_id, 'Підготовку Z-звіту скасовано. Зміна в боті залишається відкритою.');
+    return;
+  }
+
   const order = await getOrder(id);
   if (!order) {
     await bot.sendMessage(chatId, 'Замовлення не знайдено.');
+    return;
+  }
+
+  if (action === 'order_edit') {
+    if (order.ttn) {
+      await bot.sendMessage(chatId, 'Замовлення вже має ТТН. Щоб дані не відрізнялися від накладної, редагування заблоковано.');
+      return;
+    }
+    const entries = Object.entries(ORDER_EDIT_FIELDS);
+    const rows = [];
+    for (let index = 0; index < entries.length; index += 2) {
+      rows.push(entries.slice(index, index + 2).map(([code, field]) => ({
+        text: `✏️ ${field.label}`,
+        callback_data: `order_field:${code}:${id}`
+      })));
+    }
+    rows.push([{ text: '↩️ Назад', callback_data: `order_back:${id}` }]);
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, 'Що змінити в замовленні?', {
+      reply_markup: { inline_keyboard: rows }
+    });
+    return;
+  }
+
+  if (action === 'order_field') {
+    const fieldCode = callbackParts[1];
+    const field = ORDER_EDIT_FIELDS[fieldCode];
+    if (!field || order.ttn) {
+      await bot.sendMessage(chatId, 'Це поле зараз не можна редагувати.');
+      return;
+    }
+    await saveSession(chatId, {
+      mode: 'await_order_edit',
+      orderId: id,
+      field: fieldCode,
+      previewMessageId: callback.message?.message_id,
+      updatedAt: new Date().toISOString()
+    });
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, field.prompt, {
+      reply_markup: { inline_keyboard: [] }
+    });
+    return;
+  }
+
+  if (action === 'order_back') {
+    await clearSession(chatId);
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, formatOrderHtml(order), {
+      reply_markup: orderButtons(order)
+    });
+    return;
+  }
+
+  if (action === 'np_city') {
+    const choice = Number(callbackParts[1]);
+    const session = await getSessionForModes(chatId, ['choose_np_settlement']);
+    const settlement = session?.settlements?.[choice];
+    if (
+      session?.mode !== 'choose_np_settlement' ||
+      session.orderId !== id ||
+      !settlement?.Ref
+    ) {
+      await bot.sendMessage(chatId, 'Цей вибір населеного пункту вже неактуальний.');
+      return;
+    }
+    const shipmentOptions = {
+      ...(session.shipmentOptions || {}),
+      [session.settlementRole === 'sender' ? 'senderSettlementRef' : 'recipientSettlementRef']: settlement.Ref
+    };
+    await replaceOrSendMessage(
+      bot,
+      chatId,
+      callback.message?.message_id,
+      '⏳ Перевіряю обраний населений пункт і відділення Нової пошти…',
+      { reply_markup: { inline_keyboard: [] } }
+    );
+    let shipment = null;
+    try {
+      shipment = await prepareNovaPoshtaShipment(order, shipmentOptions);
+      const updatedSession = {
+        mode: 'confirm_nova_poshta_ttn',
+        orderId: id,
+        senderWarehouse: shipmentOptions.senderWarehouse || defaultSenderWarehouse(),
+        shipmentOptions,
+        shipment,
+        previewMessageId: callback.message?.message_id,
+        updatedAt: new Date().toISOString()
+      };
+      await saveSession(chatId, updatedSession);
+      await sendShipmentPreview(bot, chatId, shipment, callback.message?.message_id);
+    } catch (error) {
+      await logBotError(chatId, 'nova_poshta', error, order, { shipmentDescription: shipment?.description });
+      if (await promptForSettlementChoice(
+        bot,
+        chatId,
+        order,
+        error,
+        shipmentOptions,
+        callback.message?.message_id
+      )) return;
+      if (error?.message === 'nova_poshta_city_not_found') {
+        await saveSession(chatId, {
+          mode: 'await_np_city_correction',
+          orderId: id,
+          senderWarehouse: shipmentOptions.senderWarehouse || defaultSenderWarehouse(),
+          shipmentOptions,
+          previewMessageId: callback.message?.message_id,
+          updatedAt: new Date().toISOString()
+        });
+        await replaceOrSendMessage(
+          bot,
+          chatId,
+          callback.message?.message_id,
+          `${formatOrderHtml(order)}\n\n❌ Місто не знайдено в довіднику Нової пошти. Надішліть правильну повну назву міста або села одним повідомленням — я одразу оновлю замовлення і повторю перевірку.`,
+          { reply_markup: { inline_keyboard: [] } }
+        );
+        return;
+      }
+      await clearSession(chatId);
+      await replaceOrSendMessage(
+        bot,
+        chatId,
+        callback.message?.message_id,
+        `${formatOrderHtml(order)}\n\n❌ ${escapeHtml(shipmentErrorText(error))}`,
+        { reply_markup: orderButtons(order) }
+      );
+    }
     return;
   }
 
@@ -1117,12 +1707,15 @@ async function handleCallback(bot, callback) {
       '⏳ Перевіряю отримувача та відділення Нової пошти…',
       { reply_markup: { inline_keyboard: [] } }
     );
+    const shipmentOptions = { senderWarehouse };
+    let shipment = null;
     try {
-      const shipment = await prepareNovaPoshtaShipment(order, { senderWarehouse });
+      shipment = await prepareNovaPoshtaShipment(order, shipmentOptions);
       const session = {
         mode: 'confirm_nova_poshta_ttn',
         orderId: id,
         senderWarehouse,
+        shipmentOptions,
         shipment,
         previewMessageId: callback.message?.message_id,
         updatedAt: new Date().toISOString()
@@ -1130,6 +1723,15 @@ async function handleCallback(bot, callback) {
       await saveSession(chatId, session);
       await sendShipmentPreview(bot, chatId, shipment, callback.message?.message_id);
     } catch (error) {
+      await logBotError(chatId, 'nova_poshta', error, order);
+      if (await promptForSettlementChoice(
+        bot,
+        chatId,
+        order,
+        error,
+        shipmentOptions,
+        callback.message?.message_id
+      )) return;
       await clearSession(chatId);
       await replaceOrSendMessage(
         bot,
@@ -1208,6 +1810,7 @@ async function handleCallback(bot, callback) {
       try {
         shipment = await prepareNovaPoshtaShipment(order, recoveredOptions);
       } catch (error) {
+        await logBotError(chatId, 'nova_poshta', error, order);
         await replaceOrSendMessage(
           bot,
           chatId,
@@ -1233,9 +1836,27 @@ async function handleCallback(bot, callback) {
       '⏳ Створюю ТТН у бізнес-кабінеті Нової пошти…',
       { reply_markup: { inline_keyboard: [] } }
     );
+    const claimed = await claimAction('create-ttn', id);
+    if (!claimed) {
+      const existingAction = await getAction('create-ttn', id);
+      const currentOrder = await getOrder(id);
+      const actionTtn = existingAction?.ttn || currentOrder?.ttn;
+      await replaceOrSendMessage(
+        bot,
+        chatId,
+        messageId,
+        actionTtn
+          ? `${formatOrderHtml(currentOrder || order)}\n\n✅ ТТН уже створено: <b>${escapeHtml(actionTtn)}</b>`
+          : '⏳ Створення ТТН уже виконується. Повторне натискання не створить другу накладну.',
+        { reply_markup: actionTtn ? orderButtons(currentOrder || order) : { inline_keyboard: [] } }
+      );
+      return;
+    }
+    let createdWaybill = null;
     try {
       const waybill = await createNovaPoshtaWaybill(shipment);
-      const attached = attachTtn(order, waybill.ttn);
+      createdWaybill = waybill;
+      const attached = prepareFiscalReceiptDraft(attachTtn(order, waybill.ttn));
       const updated = {
         ...attached,
         novaPoshtaRef: waybill.ref,
@@ -1244,6 +1865,7 @@ async function handleCallback(bot, callback) {
         novaPoshtaCreatedAt: new Date().toISOString()
       };
       await saveOrder(updated);
+      await completeAction('create-ttn', id, { ttn: waybill.ttn, ref: waybill.ref });
       await clearSession(chatId);
       await replaceOrSendMessage(bot, chatId, messageId, [
         `✅ ТТН створено: <b>${escapeHtml(waybill.ttn)}</b>`,
@@ -1254,13 +1876,25 @@ async function handleCallback(bot, callback) {
         formatOrderHtml(updated)
       ].filter(Boolean).join('\n'), { reply_markup: orderButtons(updated) });
     } catch (error) {
+      await logBotError(chatId, 'nova_poshta', error, order, { shipmentDescription: shipment?.description });
+      if (createdWaybill?.ttn) {
+        try {
+          await completeAction('create-ttn', id, { ttn: createdWaybill.ttn, ref: createdWaybill.ref });
+        } catch {
+          // The original lock remains and prevents a duplicate TTN.
+        }
+      } else {
+        await releaseAction('create-ttn', id);
+      }
       await saveSession(chatId, { ...activeSession, mode: 'confirm_nova_poshta_ttn', updatedAt: new Date().toISOString() });
       await replaceOrSendMessage(
         bot,
         chatId,
         messageId,
-        `${shipmentPreviewHtml(shipment)}\n\n❌ ${escapeHtml(shipmentErrorText(error))}`,
-        { reply_markup: shipmentPreviewKeyboard(shipment) }
+        createdWaybill?.ttn
+          ? `⚠️ Нова пошта створила ТТН <b>${escapeHtml(createdWaybill.ttn)}</b>, але бот не зміг зберегти її в замовленні. Другу ТТН заблоковано — введіть цей номер вручну.`
+          : `${shipmentPreviewHtml(shipment)}\n\n❌ ${escapeHtml(shipmentErrorText(error))}`,
+        { reply_markup: createdWaybill?.ttn ? orderButtons(order) : shipmentPreviewKeyboard(shipment) }
       );
     }
     return;
@@ -1315,10 +1949,27 @@ async function handleCallback(bot, callback) {
   }
 
   if (action === 'prepaid') {
-    const updated = markPrepaymentReceived(order, order.prepaymentAmount);
+    const updated = prepareFiscalReceiptDraft(markPrepaymentReceived(order, order.prepaymentAmount));
     await saveOrder(updated);
-    await bot.sendMessage(chatId, `✅ Передоплату ${money(updated.prepaymentAmount)} підтверджено.`);
-    await sendOrder(bot, chatId, updated);
+    await replaceOrSendMessage(
+      bot,
+      chatId,
+      callback.message?.message_id,
+      [
+        formatOrderHtml(updated),
+        '',
+        `✅ Передоплату ${money(updated.prepaymentAmount)} на рахунку Monobank підтверджено.`,
+        '<b>🚚 Створити ТТН зараз?</b>'
+      ].join('\n'),
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Так, створити ТТН', callback_data: `np_prepare:${id}` },
+            { text: '⏳ Не зараз', callback_data: `order_back:${id}` }
+          ]]
+        }
+      }
+    );
     return;
   }
   if (action === 'ttn') {
@@ -1326,16 +1977,116 @@ async function handleCallback(bot, callback) {
     await bot.sendMessage(chatId, `Введіть ТТН для <b>${id}</b>:`, { reply_markup: CANCEL_KEYBOARD });
     return;
   }
-  if (action === 'novapay') {
-    const updated = markNovaPayReceived(order, order.codAmount);
+  if (action === 'novapay' || action === 'novapay_check') {
+    if (order.status !== ORDER_STATUSES.AWAITING_NOVAPAY || !order.ttn) {
+      await bot.sendMessage(chatId, 'Це замовлення зараз не очікує оплату NovaPay.');
+      return;
+    }
+    const settlement = calculateNovaPaySettlement(order.codAmount);
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, [
+      '<b>💰 Перевірка NovaPay</b>',
+      '',
+      `Повна сума: <b>${money(order.totalAmount)}</b>`,
+      `Передоплата на Monobank: <b>${money(order.prepaymentAmount)}</b>`,
+      `Клієнт сплачує NovaPay: <b>${money(settlement.grossAmount)}</b>`,
+      `Комісія NovaPay 0,5%: <b>${money(settlement.feeAmount)}</b>`,
+      `На рахунок NovaPay зараховується: <b>${money(settlement.netAmount)}</b>`,
+      `ТТН: <b>${escapeHtml(order.ttn)}</b>`,
+      '',
+      'Переказ із NovaPay на власний Monobank повторною оплатою не вважається.'
+    ].join('\n'), {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: `✅ Зараховано ${money(settlement.netAmount)}`, callback_data: `novapay_confirm:${id}` },
+          { text: '↩️ Назад', callback_data: `novapay_cancel:${id}` }
+        ]]
+      }
+    });
+    return;
+  }
+  if (action === 'novapay_cancel') {
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, formatOrderHtml(order), {
+      reply_markup: orderButtons(order)
+    });
+    return;
+  }
+  if (action === 'novapay_confirm') {
+    if (order.novaPayReceivedAt) {
+      await bot.sendMessage(chatId, '✅ Цю оплату NovaPay уже підтверджено.');
+      return;
+    }
+    const settlement = calculateNovaPaySettlement(order.codAmount);
+    const updated = prepareFiscalReceiptDraft(markNovaPayReceived(order, {
+      ...settlement,
+      ttn: order.ttn,
+      settledAt: new Date().toISOString()
+    }));
     await saveOrder(updated);
-    await bot.sendMessage(chatId, '✅ Оплату NovaPay підтверджено. Тепер перевірте дані та вручну пробийте чек у СОТА Каса:');
+    await bot.sendMessage(chatId, [
+      `✅ Післяплату ${money(settlement.grossAmount)} через NovaPay підтверджено.`,
+      `Комісія: ${money(settlement.feeAmount)}. На рахунок NovaPay зараховано: ${money(settlement.netAmount)}.`,
+      'Чернетку фіскального чека сформовано на повну суму продажу.'
+    ].join('\n'));
     await sendOrder(bot, chatId, updated, true);
+    return;
+  }
+  if (action === 'fiscal_preview') {
+    const updated = prepareFiscalReceiptDraft(order);
+    if (!updated.fiscalReceipt) {
+      await bot.sendMessage(chatId, 'Оплата цього замовлення ще не готова для фіскального чека.');
+      return;
+    }
+    if (!order.fiscalReceipt) await saveOrder(updated);
+    await replaceOrSendMessage(
+      bot,
+      chatId,
+      callback.message?.message_id,
+      formatFiscalReceiptDraftHtml(updated),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            ...(!updated.fiscalReceipt.catalogConfirmedAt ? [[
+              { text: '✅ Товари й суми правильні', callback_data: `fiscal_confirm:${id}` }
+            ]] : [[
+              { text: '🧾 Записати номер чека CheckBox вручну', callback_data: `receipt:${id}` }
+            ]]),
+            [{ text: '↩️ Назад до замовлення', callback_data: `fiscal_back:${id}` }]
+          ]
+        }
+      }
+    );
+    return;
+  }
+  if (action === 'fiscal_confirm') {
+    const updated = confirmFiscalReceiptCatalog(order);
+    await saveOrder(updated);
+    await replaceOrSendMessage(
+      bot,
+      chatId,
+      callback.message?.message_id,
+      formatFiscalReceiptDraftHtml(updated),
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🧾 Записати номер чека CheckBox вручну', callback_data: `receipt:${id}` }],
+            [{ text: '↩️ Назад до замовлення', callback_data: `fiscal_back:${id}` }]
+          ]
+        }
+      }
+    );
+    return;
+  }
+  if (action === 'fiscal_back') {
+    await replaceOrSendMessage(bot, chatId, callback.message?.message_id, formatOrderHtml(order, {
+      receiptInstructions: true
+    }), {
+      reply_markup: orderButtons(order)
+    });
     return;
   }
   if (action === 'receipt') {
     await saveSession(chatId, { mode: 'await_receipt', orderId: id, updatedAt: new Date().toISOString() });
-    await bot.sendMessage(chatId, `Введіть фіскальний номер чека СОТА для <b>${id}</b>:`, {
+    await bot.sendMessage(chatId, `Введіть фіскальний номер чека CheckBox для <b>${id}</b>:`, {
       reply_markup: CANCEL_KEYBOARD
     });
   }
@@ -1368,7 +2119,8 @@ export const handler = async (event) => {
     if (update.message) await handleMessage(bot, update.message);
     if (update.callback_query) await handleCallback(bot, update.callback_query);
     return jsonResponse(200, { ok: true });
-  } catch {
+  } catch (error) {
+    await logBotError(chatId, 'system', error);
     return jsonResponse(500, { ok: false });
   }
 };

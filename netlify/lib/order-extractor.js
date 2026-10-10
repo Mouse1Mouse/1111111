@@ -3,7 +3,7 @@ import {
   cleanText,
   isValidCustomerOrderNumber,
   isValidEmail,
-  isValidPhone,
+  normalizeUkrainianPhone,
   normalizeCustomerOrderNumber,
   parseAmount
 } from './order-core.js';
@@ -71,6 +71,14 @@ Do not confuse a phone number, order number, message time or price with a Nova P
 The full order value is the total price of all goods. The IBAN prepayment is commonly 200 UAH, but return it only if visible.
 The COD amount is the remaining amount that the customer will pay through NovaPay; keep it separate from the full value.
 Preserve product names, fabric, color, sizes, quantity and price in Ukrainian when visible.
+For products, preserve one of these exact types when it is visible: комплект постільної білизни, підковдра, наволочки, простирадло, простирадло на резинці.
+Always preserve the exact size (for example 50×70, 145×220 or 160×200×30) because it is used to select the CheckBox catalog article.
+For bedding sets, preserve the exact set label when visible: півтораспальний, двоспальний, Євро, Євро двоспальний, сімейний or індивідуальний розмір.
+Recognize Ukrainian phone numbers written as +380XXXXXXXXX, 380XXXXXXXXX or 0XXXXXXXXX. Preserve every visible digit and never invent missing digits.
+Treat "наложка", "наложений платіж", "післяплата" and "NovaPay" as the COD balance.
+Treat "без передоплати" or "передоплати немає" as an explicit prepaymentAmount of 0.
+Recognize branches written as "НП 123", "Нова пошта номер 123", "123 відділення" and "123-тє відділення".
+For settlements with duplicate names, preserve any visible settlement type, district and region in the city field.
 If a field is unknown, use an empty string or null as required by the schema.
 `.trim();
 
@@ -106,11 +114,25 @@ export function normalizeExtractedDraft(result) {
   }
 
   const customerName = cleanText(result?.customerName || result?.instagramHandle, 120);
+  const normalizedPhone = normalizeUkrainianPhone(result?.phone);
+  if (normalizedPhone.corrected) {
+    warnings.push(
+      normalizedPhone.correction === 'country_code'
+        ? `Телефон автоматично доповнено кодом України: ${normalizedPhone.input} → ${normalizedPhone.phone}.`
+        : `Телефон автоматично виправлено: ${normalizedPhone.input} → ${normalizedPhone.phone}.`
+    );
+  } else if (normalizedPhone.input && !normalizedPhone.valid) {
+    warnings.push(
+      normalizedPhone.missingDigits
+        ? `Телефон неповний: ${normalizedPhone.input}. Не вистачає ${normalizedPhone.missingDigits} цифр.`
+        : `Телефон має неправильний формат: ${normalizedPhone.input}.`
+    );
+  }
   const draft = {
     customerOrderNumber: normalizeCustomerOrderNumber(result?.customerOrderNumber),
     customerName,
     instagramHandle: cleanText(result?.instagramHandle, 80),
-    phone: cleanText(result?.phone, 40),
+    phone: normalizedPhone.phone,
     email: isValidEmail(result?.email) ? cleanText(result.email, 160) : '-',
     city: cleanText(result?.city, 120),
     branch: cleanText(result?.branch, 180),
@@ -126,7 +148,7 @@ export function normalizeExtractedDraft(result) {
     warnings.push('Номер замовлення не вказано — його можна додати пізніше.');
   }
   if (draft.customerName.length < 2) missingFields.push('customerName');
-  if (!isValidPhone(draft.phone)) missingFields.push('phone');
+  if (!normalizedPhone.valid) missingFields.push('phone');
   if (draft.itemsSummary.length < 3) missingFields.push('itemsSummary');
   if (
     (draft.totalAmount === null || draft.totalAmount <= 0) &&
@@ -163,6 +185,26 @@ export function applyPrepaymentChoice(draft, value) {
   return { ...draft, prepaymentAmount, totalAmount };
 }
 
+export function applyOrderTextHints(result, sourceText) {
+  const text = cleanOrderSourceText(sourceText);
+  const hinted = { ...result };
+  if (/(?:без\s+передоплат[и]|передоплат[аи]\s+(?:немає|відсутня)|без\s+авансу)/iu.test(text)) {
+    hinted.prepaymentAmount = 0;
+  }
+  const codMatch = text.match(
+    /(?:наложк[аиу]?|наложен(?:ий|ого)\s+платіж|післяплат[аиу]?|novapay)\D{0,24}(\d[\d\s]*(?:[.,]\d{1,2})?)/iu
+  );
+  if (codMatch && parseAmount(codMatch[1]) !== null) hinted.codAmount = parseAmount(codMatch[1]);
+
+  const branchBefore = text.match(
+    /(?:нп|нова\s+пошта|відділення|відд\.?|поштомат)\s*(?:номер|№|#)?\s*(\d+)/iu
+  );
+  const branchAfter = text.match(/(\d+)\s*(?:[-–—]?\s*(?:е|є|те|тє|ше))?\s*(?:відділення|відд\.?|поштомат)/iu);
+  const branchNumber = branchBefore?.[1] || branchAfter?.[1];
+  if (branchNumber) hinted.branch = `Відділення №${Number(branchNumber)}`;
+  return hinted;
+}
+
 function cleanOrderSourceText(value) {
   return String(value ?? '')
     .replace(/\r\n?/g, '\n')
@@ -172,7 +214,7 @@ function cleanOrderSourceText(value) {
     .slice(0, MAX_ORDER_TEXT_LENGTH);
 }
 
-async function extractOrder(content, operatorId) {
+async function extractOrder(content, operatorId, sourceText = '') {
   const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY1 || process.env.NETLIFY_AI_GATEWAY_KEY;
   const baseUrl = process.env.OPENAI_BASE_URL || process.env.NETLIFY_AI_GATEWAY_BASE_URL;
   if (!apiKey) throw new Error('ai_gateway_not_configured');
@@ -180,13 +222,7 @@ async function extractOrder(content, operatorId) {
   const safetyIdentifier = createHash('sha256')
     .update(`miva-order-operator:${operatorId}`)
     .digest('hex');
-  const response = await fetch(responsesEndpoint(baseUrl), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
+  const requestBody = JSON.stringify({
       model: process.env.ORDER_VISION_MODEL || 'gpt-5.6-luna',
       store: false,
       safety_identifier: safetyIdentifier,
@@ -204,20 +240,48 @@ async function extractOrder(content, operatorId) {
           schema: EXTRACTION_SCHEMA
         }
       }
-    }),
-    signal: AbortSignal.timeout(35000)
   });
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error('ai_extraction_failed');
-  const text = outputText(data);
-  if (!text) throw new Error('ai_empty_result');
-
-  try {
-    return normalizeExtractedDraft(JSON.parse(text));
-  } catch {
-    throw new Error('ai_invalid_result');
+  let finalError = new Error('ai_extraction_failed');
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(responsesEndpoint(baseUrl), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(30000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error('ai_extraction_failed');
+        error.retryable = response.status === 408 || response.status === 409 || response.status === 429 || response.status >= 500;
+        throw error;
+      }
+      const text = outputText(data);
+      if (!text) {
+        const error = new Error('ai_empty_result');
+        error.retryable = true;
+        throw error;
+      }
+      try {
+        const parsed = JSON.parse(text);
+        return normalizeExtractedDraft(sourceText ? applyOrderTextHints(parsed, sourceText) : parsed);
+      } catch {
+        const error = new Error('ai_invalid_result');
+        error.retryable = true;
+        throw error;
+      }
+    } catch (error) {
+      finalError = error;
+      const retryable = error?.retryable || error?.name === 'AbortError' || error?.name === 'TimeoutError' || error instanceof TypeError;
+      if (!retryable || attempt === 1) break;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
   }
+  throw finalError;
 }
 
 export async function extractOrderFromImage({ bytes, mimeType, caption = '', operatorId = '' }) {
@@ -236,5 +300,5 @@ export async function extractOrderFromText({ text, operatorId = '' }) {
   return extractOrder([{
     type: 'input_text',
     text: `${EXTRACTION_PROMPT}\n\nCopied order text:\n${sourceText}`
-  }], operatorId);
+  }], operatorId, sourceText);
 }
