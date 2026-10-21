@@ -18,6 +18,14 @@ import {
 } from '../lib/order-store.js';
 import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
 
+// NovaPay is used here only for reconciliation. CheckBox Delivery owns the
+// final fiscalization of an ETTN project after the buyer receives the parcel.
+// A 15-minute schedule makes the operator view catch up even if no Telegram
+// webhook is received, without ever creating a second final receipt.
+export const config = {
+  schedule: '*/15 * * * *'
+};
+
 function kyivDate(daysAgo = 0) {
   const date = new Date(Date.now() - daysAgo * 86400000);
   return new Intl.DateTimeFormat('sv-SE', {
@@ -97,6 +105,51 @@ async function notifyReceiptReady(bot, chatIds, order) {
   }
 }
 
+function isCheckboxDeliveryManaged(order) {
+  return Boolean(
+    order?.checkboxDelivery &&
+    ['created', 'settled'].includes(order.checkboxDelivery.state) &&
+    order.checkboxDelivery.ttn === order.ttn
+  );
+}
+
+function recordCheckboxDeliverySettlement(order, payment) {
+  const updatedAt = new Date().toISOString();
+  return {
+    ...order,
+    checkboxDelivery: {
+      ...order.checkboxDelivery,
+      // This is a reconciliation marker only. The CheckBox ETTN service
+      // remains the sole creator of the final fiscal receipt and customer SMS.
+      state: 'settled',
+      novaPaySettledAt: order.novaPaySettledAt,
+      transactionId: payment.transactionId || order.novaPayTransactionId || '',
+      registryNumber: payment.registryNumber || order.novaPayRegistryNumber || '',
+      updatedAt
+    },
+    updatedAt
+  };
+}
+
+function isNovaPayRefreshAuthError(error) {
+  return /UserAuthenticationJWT|access denied|refresh token/iu.test(String(error?.message || ''));
+}
+
+async function fetchPaymentsWithCredentialFallback({ dateFrom, dateTo, credentials }) {
+  const rotate = (rotated) => saveNovaPayApiCredentials({ ...rotated, sourceVersion: 'jwt-rotation-v1' });
+  try {
+    return await fetchNovaPayPayments({ dateFrom, dateTo, credentials, onCredentialsRotated: rotate });
+  } catch (error) {
+    // A refresh token is rotated after use. If the stored copy has expired or
+    // belongs to another login, one attempt with the configured bootstrap
+    // credentials is safe and may repair the chain. Never retry an unknown
+    // failure, so the monitor cannot make repeated external requests blindly.
+    if (!credentials || !isNovaPayRefreshAuthError(error)) throw error;
+    console.warn('NovaPay stored credentials were rejected; trying configured fallback once');
+    return fetchNovaPayPayments({ dateFrom, dateTo, credentials: null, onCredentialsRotated: rotate });
+  }
+}
+
 export const handler = async (event) => {
   connectOrderStore(event);
   if (!isNovaPayConfigured()) {
@@ -123,11 +176,8 @@ export const handler = async (event) => {
       usingStoredCredentials: Boolean(credentials)
     });
     const payments = awaiting.length
-      ? await fetchNovaPayPayments({
-        dateFrom: kyivDate(14),
-        dateTo: kyivDate(0),
-        credentials,
-        onCredentialsRotated: (rotated) => saveNovaPayApiCredentials({ ...rotated, sourceVersion: 'jwt-rotation-v1' })
+      ? await fetchPaymentsWithCredentialFallback({
+        dateFrom: kyivDate(14), dateTo: kyivDate(0), credentials
       })
       : [];
     const matched = [];
@@ -135,7 +185,7 @@ export const handler = async (event) => {
       const key = paymentKey(payment);
       if (!key || !await claimAction('novapay-settlement', key)) continue;
       try {
-        const updated = prepareFiscalReceiptDraft(markNovaPayReceived(order, {
+        let updated = markNovaPayReceived(order, {
           grossAmount: payment.grossAmount ?? order.codAmount,
           feeAmount: payment.feeAmount,
           netAmount: payment.netAmount,
@@ -143,7 +193,15 @@ export const handler = async (event) => {
           transactionId: payment.transactionId,
           registryNumber: payment.registryNumber,
           settledAt: payment.settledAt || new Date().toISOString()
-        }));
+        });
+        // A linked ETTN project is fiscalized by CheckBox Delivery itself. Do
+        // not prepare or request a manual receipt here: that used to invite a
+        // duplicate cheque after the automatic final receipt.
+        if (isCheckboxDeliveryManaged(updated)) {
+          updated = recordCheckboxDeliverySettlement(updated, payment);
+        } else {
+          updated = prepareFiscalReceiptDraft(updated);
+        }
         await saveOrder(updated);
         await completeAction('novapay-settlement', key, {
           orderId: updated.id,
@@ -158,8 +216,13 @@ export const handler = async (event) => {
     }
 
     const ready = [
-      ...orders.filter((order) => order.status === ORDER_STATUSES.READY_FOR_RECEIPT && order.novaPayReceivedAt && !order.receiptNumber),
-      ...matched
+      ...orders.filter((order) => (
+        order.status === ORDER_STATUSES.READY_FOR_RECEIPT &&
+        order.novaPayReceivedAt &&
+        !order.receiptNumber &&
+        !isCheckboxDeliveryManaged(order)
+      )),
+      ...matched.filter((order) => !isCheckboxDeliveryManaged(order))
     ];
     const uniqueReady = [...new Map(ready.map((order) => [order.id, order])).values()];
     const bot = telegramClient(process.env.TELEGRAM_BOT_TOKEN);
@@ -167,10 +230,27 @@ export const handler = async (event) => {
     for (const order of uniqueReady) {
       if (await notifyReceiptReady(bot, chatIds, order)) notified += 1;
     }
-    const summary = { ok: true, checked: awaiting.length, payments: payments.length, matched: matched.length, notified };
+    const summary = {
+      ok: true,
+      checked: awaiting.length,
+      payments: payments.length,
+      matched: matched.length,
+      checkboxDeliverySettlements: matched.filter(isCheckboxDeliveryManaged).length,
+      notified
+    };
     console.info('NovaPay monitor completed', JSON.stringify(summary));
     return { statusCode: 200, body: JSON.stringify(summary) };
   } catch (error) {
+    // Credentials for this legacy NovaPay SOAP API rotate outside the bot.
+    // Keep the scheduled reconciliation quiet until they are reconnected; the
+    // CheckBox Delivery ETTN flow keeps working independently of this ledger.
+    if (isNovaPayRefreshAuthError(error)) {
+      console.warn('NovaPay monitor paused: API credentials must be reconnected');
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ ok: false, skipped: 'reauthorization_required' })
+      };
+    }
     console.error('NovaPay monitor failed', String(error?.message || error).slice(0, 500));
     await saveBotError({
       category: 'novapay_monitor',
