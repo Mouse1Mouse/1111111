@@ -26,6 +26,11 @@ export const config = {
   schedule: '*/15 * * * *'
 };
 
+// v1 credentials were saved before the current production refresh pair was
+// reconnected. Start that recovery from the configured pair once; a successful
+// JWT response immediately persists a v2 rotating credential chain.
+const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v2';
+
 function kyivDate(daysAgo = 0) {
   const date = new Date(Date.now() - daysAgo * 86400000);
   return new Intl.DateTimeFormat('sv-SE', {
@@ -136,7 +141,10 @@ function isNovaPayRefreshAuthError(error) {
 }
 
 async function fetchPaymentsWithCredentialFallback({ dateFrom, dateTo, credentials }) {
-  const rotate = (rotated) => saveNovaPayApiCredentials({ ...rotated, sourceVersion: 'jwt-rotation-v1' });
+  const rotate = (rotated) => saveNovaPayApiCredentials({
+    ...rotated,
+    sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION
+  });
   try {
     return await fetchNovaPayPayments({ dateFrom, dateTo, credentials, onCredentialsRotated: rotate });
   } catch (error) {
@@ -167,9 +175,12 @@ export const handler = async (event) => {
     const orders = await listOrders({ includeClosed: false, limit: 100 });
     const awaiting = orders.filter((order) => order.status === ORDER_STATUSES.AWAITING_NOVAPAY && order.ttn);
     const savedCredentials = await getNovaPayApiCredentials();
-    // Ignore credentials saved before the JWT rotation implementation. The first
-    // successful run overwrites that stale record with the current token chain.
-    const credentials = savedCredentials?.sourceVersion === 'jwt-rotation-v1' ? savedCredentials : null;
+    // Ignore the v1 cache during this one-time recovery: it is the rejected
+    // chain that prevents the freshly configured pair from being reached before
+    // the Netlify function deadline. The first successful run writes a v2 cache.
+    const credentials = savedCredentials?.sourceVersion === NOVAPAY_CREDENTIAL_SOURCE_VERSION
+      ? savedCredentials
+      : null;
     console.info('NovaPay credential source', {
       saved: Boolean(savedCredentials),
       savedVersion: savedCredentials?.sourceVersion || null,
