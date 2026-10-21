@@ -43,6 +43,10 @@ function publicCertificate(env = process.env) {
   }
 }
 
+function novaPayLogin(env = process.env) {
+  return String(env.NOVAPAY_LOGIN || '').trim();
+}
+
 function soapEnvelope(operation, fields) {
   const body = Object.entries(fields)
     .map(([key, value]) => `<tem:${key}>${xmlEscape(value)}</tem:${key}>`)
@@ -215,7 +219,7 @@ export function findNovaPayPaymentForOrder(payments, order, tolerance = 0.01) {
 export function isNovaPayConfigured(env = process.env) {
   return Boolean(
     (env.NOVAPAY_REFRESH_TOKEN_V2 || env.NOVAPAY_REFRESH_TOKEN) &&
-    env.NOVAPAY_LOGIN &&
+    novaPayLogin(env) &&
     (env.NOVAPAY_PUBLIC_CERTIFICATE_V2 || env.NOVAPAY_PUBLIC_CERTIFICATE)
   );
 }
@@ -226,7 +230,7 @@ export async function fetchNovaPayPayments({ dateFrom, dateTo, env = process.env
   const authResult = await soapCall('UserAuthenticationJWT', {
     request_ref: randomUUID(),
     refresh_token: credentials?.refreshToken || env.NOVAPAY_REFRESH_TOKEN_V2 || env.NOVAPAY_REFRESH_TOKEN,
-    login: env.NOVAPAY_LOGIN,
+    login: novaPayLogin(env),
     public_certificate: credentials?.publicCertificate || publicCertificate(env)
   }, endpoint);
   const jwt = extractTag(authResult, 'jwt');
