@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findNovaPayPaymentForOrder, isNovaPayConfigured, normalizeNovaPayPayments } from '../netlify/lib/novapay-client.js';
+import {
+  findNovaPayPaymentForOrder,
+  isNovaPayConfigured,
+  normalizeNovaPayPayments,
+  normalizeNovaPayPublicCertificate
+} from '../netlify/lib/novapay-client.js';
 
 test('accepts a NovaPay login with accidental outer whitespace', () => {
   assert.equal(isNovaPayConfigured({
@@ -8,6 +13,12 @@ test('accepts a NovaPay login with accidental outer whitespace', () => {
     NOVAPAY_REFRESH_TOKEN: 'refresh-token',
     NOVAPAY_PUBLIC_CERTIFICATE: 'public-certificate'
   }), true);
+});
+
+test('normalizes a base64-prefixed explicit NovaPay certificate', () => {
+  const encoded = Buffer.from('certificate-content', 'utf8').toString('base64');
+  assert.equal(normalizeNovaPayPublicCertificate(`base64:${encoded}`), 'certificate-content');
+  assert.equal(normalizeNovaPayPublicCertificate(' plain-certificate '), 'plain-certificate');
 });
 
 test('normalizes JSON payments and matches by TTN and gross amount', () => {

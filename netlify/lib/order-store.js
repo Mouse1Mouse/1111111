@@ -102,6 +102,10 @@ export async function saveFiscalShiftState(state) {
 
 export async function getNovaPayApiCredentials() {
   const raw = await store().get('integrations/novapay-api-credentials.json', { type: 'text' });
+  return parseNovaPayApiCredentials(raw);
+}
+
+export function parseNovaPayApiCredentials(raw) {
   if (!raw) return null;
   try {
     const json = String(raw).startsWith('base64:')
@@ -113,14 +117,21 @@ export async function getNovaPayApiCredentials() {
   }
 }
 
-export async function saveNovaPayApiCredentials(credentials) {
-  const value = {
+export function serializeNovaPayApiCredentials(credentials, rotatedAt = new Date().toISOString()) {
+  return {
     refreshToken: String(credentials.refreshToken || ''),
     publicCertificate: String(credentials.publicCertificate || ''),
     sourceVersion: String(credentials.sourceVersion || ''),
-    rotatedAt: new Date().toISOString()
+    credentialEpoch: String(credentials.credentialEpoch || ''),
+    rotatedAt
   };
-  if (!value.refreshToken || !value.publicCertificate) throw new Error('NovaPay rotated credentials are incomplete');
+}
+
+export async function saveNovaPayApiCredentials(credentials) {
+  const value = serializeNovaPayApiCredentials(credentials);
+  if (!value.refreshToken || !value.publicCertificate || !value.credentialEpoch) {
+    throw new Error('NovaPay rotated credentials are incomplete');
+  }
   await store().setJSON('integrations/novapay-api-credentials.json', value);
   return value;
 }

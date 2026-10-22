@@ -33,14 +33,18 @@ function novaPayDate(value) {
   return iso ? `${iso[3]}.${iso[2]}.${iso[1]}` : String(value || '');
 }
 
-function publicCertificate(env = process.env) {
-  const value = String(env.NOVAPAY_PUBLIC_CERTIFICATE_V2 || env.NOVAPAY_PUBLIC_CERTIFICATE || '').trim();
+export function normalizeNovaPayPublicCertificate(value) {
+  value = String(value || '').trim();
   if (!value.startsWith('base64:')) return value;
   try {
     return Buffer.from(value.slice('base64:'.length), 'base64').toString('utf8').trim();
   } catch {
     return '';
   }
+}
+
+function publicCertificate(env = process.env) {
+  return normalizeNovaPayPublicCertificate(env.NOVAPAY_PUBLIC_CERTIFICATE_V2 || env.NOVAPAY_PUBLIC_CERTIFICATE);
 }
 
 function novaPayLogin(env = process.env) {
@@ -231,7 +235,7 @@ export async function fetchNovaPayPayments({ dateFrom, dateTo, env = process.env
     request_ref: randomUUID(),
     refresh_token: credentials?.refreshToken || env.NOVAPAY_REFRESH_TOKEN_V2 || env.NOVAPAY_REFRESH_TOKEN,
     login: novaPayLogin(env),
-    public_certificate: credentials?.publicCertificate || publicCertificate(env)
+    public_certificate: normalizeNovaPayPublicCertificate(credentials?.publicCertificate || publicCertificate(env))
   }, endpoint);
   const jwt = extractTag(authResult, 'jwt');
   if (!jwt) throw new Error('NovaPay authentication did not return JWT');
