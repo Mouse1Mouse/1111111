@@ -2,15 +2,16 @@ import { prepareFiscalReceiptDraft } from '../lib/fiscal-receipt.js';
 import { markNovaPayReceived, ORDER_STATUSES, escapeHtml } from '../lib/order-core.js';
 import {
   fetchNovaPayPayments,
-  findNovaPayPaymentForOrder,
-  isNovaPayConfigured
+  findNovaPayPaymentForOrder
 } from '../lib/novapay-client.js';
 import {
+  claimNovaPayCredentialLease,
   claimAction,
   completeAction,
   connectOrderStore,
   getNovaPayApiCredentials,
   listOrders,
+  releaseNovaPayCredentialLease,
   releaseAction,
   saveBotError,
   saveOrder,
@@ -20,16 +21,9 @@ import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
 
 // NovaPay is used here only for reconciliation. CheckBox Delivery owns the
 // final fiscalization of an ETTN project after the buyer receives the parcel.
-// A 15-minute schedule makes the operator view catch up even if no Telegram
-// webhook is received, without ever creating a second final receipt.
-export const config = {
-  schedule: '*/15 * * * *'
-};
-
-// v1 credentials were saved before the current production refresh pair was
-// reconnected. Start that recovery from the configured pair once; a successful
-// JWT response immediately persists a v2 rotating credential chain.
-const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v2';
+// The schedule is declared once in netlify.toml. A single source avoids
+// ambiguity about whether scheduled invocations can overlap.
+const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v3-serialized';
 
 function kyivDate(daysAgo = 0) {
   const date = new Date(Date.now() - daysAgo * 86400000);
@@ -137,31 +131,70 @@ function recordCheckboxDeliverySettlement(order, payment) {
 }
 
 function isNovaPayRefreshAuthError(error) {
-  return /UserAuthenticationJWT|access denied|refresh token/iu.test(String(error?.message || ''));
+  return /NovaPay UserAuthenticationJWT:|refresh token/iu.test(String(error?.message || ''));
 }
 
-async function fetchPaymentsWithCredentialFallback({ dateFrom, dateTo, credentials }) {
-  const rotate = (rotated) => saveNovaPayApiCredentials({
-    ...rotated,
-    sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION
-  });
+export function configuredNovaPayBootstrap(env = process.env) {
+  const refreshToken = String(env.NOVAPAY_REFRESH_TOKEN_V2 || '').trim();
+  const publicCertificate = String(env.NOVAPAY_PUBLIC_CERTIFICATE_V2 || '').trim();
+  const credentialEpoch = String(env.NOVAPAY_CREDENTIAL_EPOCH || '').trim();
+  if (!refreshToken || !publicCertificate || !credentialEpoch) return null;
+  return { refreshToken, publicCertificate, credentialEpoch };
+}
+
+export function selectNovaPayCredentials(savedCredentials, bootstrap) {
+  if (!bootstrap) return { kind: 'reconnect_required', credentials: null, source: 'none' };
+  const savedIsCurrent = (
+    savedCredentials?.sourceVersion === NOVAPAY_CREDENTIAL_SOURCE_VERSION &&
+    savedCredentials?.credentialEpoch === bootstrap.credentialEpoch &&
+    savedCredentials?.refreshToken &&
+    savedCredentials?.publicCertificate
+  );
+  return savedIsCurrent
+    ? { kind: 'ready', credentials: savedCredentials, source: 'stored' }
+    : { kind: 'ready', credentials: bootstrap, source: 'bootstrap' };
+}
+
+export async function fetchNovaPayPaymentsWithCredentialLease({
+  dateFrom,
+  dateTo,
+  bootstrap,
+  loadCredentials = getNovaPayApiCredentials,
+  acquireLease = claimNovaPayCredentialLease,
+  releaseLease = releaseNovaPayCredentialLease,
+  fetchPayments = fetchNovaPayPayments,
+  saveCredentials = saveNovaPayApiCredentials
+}) {
+  const lease = await acquireLease();
+  if (!lease) return { kind: 'deferred', payments: [] };
+
   try {
-    return await fetchNovaPayPayments({ dateFrom, dateTo, credentials, onCredentialsRotated: rotate });
-  } catch (error) {
-    // A refresh token is rotated after use. If the stored copy has expired or
-    // belongs to another login, one attempt with the configured bootstrap
-    // credentials is safe and may repair the chain. Never retry an unknown
-    // failure, so the monitor cannot make repeated external requests blindly.
-    if (!credentials || !isNovaPayRefreshAuthError(error)) throw error;
-    console.warn('NovaPay stored credentials were rejected; trying configured fallback once');
-    return fetchNovaPayPayments({ dateFrom, dateTo, credentials: null, onCredentialsRotated: rotate });
+    // Read only after acquiring the lease: a prior invocation may have already
+    // rotated and saved the next pair while this one was waiting.
+    const selected = selectNovaPayCredentials(await loadCredentials(), bootstrap);
+    if (selected.kind !== 'ready') return { ...selected, payments: [] };
+
+    const payments = await fetchPayments({
+      dateFrom,
+      dateTo,
+      credentials: selected.credentials,
+      onCredentialsRotated: (rotated) => saveCredentials({
+        ...rotated,
+        sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION,
+        credentialEpoch: bootstrap.credentialEpoch
+      })
+    });
+    return { kind: 'completed', payments, source: selected.source };
+  } finally {
+    await releaseLease(lease);
   }
 }
 
 export const handler = async (event) => {
   connectOrderStore(event);
-  if (!isNovaPayConfigured()) {
-    console.warn('NovaPay monitor skipped: API is not configured');
+  const bootstrap = configuredNovaPayBootstrap();
+  if (!bootstrap || !String(process.env.NOVAPAY_LOGIN || '').trim()) {
+    console.warn('NovaPay monitor paused: API credentials must be reconnected');
     return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'not_configured' }) };
   }
 
@@ -174,23 +207,21 @@ export const handler = async (event) => {
   try {
     const orders = await listOrders({ includeClosed: false, limit: 100 });
     const awaiting = orders.filter((order) => order.status === ORDER_STATUSES.AWAITING_NOVAPAY && order.ttn);
-    const savedCredentials = await getNovaPayApiCredentials();
-    // Ignore the v1 cache during this one-time recovery: it is the rejected
-    // chain that prevents the freshly configured pair from being reached before
-    // the Netlify function deadline. The first successful run writes a v2 cache.
-    const credentials = savedCredentials?.sourceVersion === NOVAPAY_CREDENTIAL_SOURCE_VERSION
-      ? savedCredentials
-      : null;
-    console.info('NovaPay credential source', {
-      saved: Boolean(savedCredentials),
-      savedVersion: savedCredentials?.sourceVersion || null,
-      usingStoredCredentials: Boolean(credentials)
-    });
-    const payments = awaiting.length
-      ? await fetchPaymentsWithCredentialFallback({
-        dateFrom: kyivDate(14), dateTo: kyivDate(0), credentials
+    const paymentResult = awaiting.length
+      ? await fetchNovaPayPaymentsWithCredentialLease({
+        dateFrom: kyivDate(14), dateTo: kyivDate(0), bootstrap
       })
-      : [];
+      : { kind: 'completed', payments: [], source: 'not_needed' };
+    if (paymentResult.kind === 'deferred') {
+      console.info('NovaPay monitor deferred: credential rotation is already in progress');
+      return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'credential_rotation_in_progress' }) };
+    }
+    if (paymentResult.kind === 'reconnect_required') {
+      console.warn('NovaPay monitor paused: API credentials must be reconnected');
+      return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'reauthorization_required' }) };
+    }
+    console.info('NovaPay credential source', { source: paymentResult.source });
+    const payments = paymentResult.payments;
     const matched = [];
     for (const { order, payment } of matchPaymentsToOrders(payments, awaiting)) {
       const key = paymentKey(payment);

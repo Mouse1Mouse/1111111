@@ -1,6 +1,9 @@
 import { connectLambda, getStore } from '@netlify/blobs';
+import { randomUUID } from 'node:crypto';
 
 const STORE_NAME = 'miva-instagram-orders';
+const NOVAPAY_CREDENTIAL_LEASE_KEY = 'locks/novapay-credential-rotation.json';
+const NOVAPAY_CREDENTIAL_LEASE_MS = 3 * 60 * 1000;
 
 export function connectOrderStore(event) {
   connectLambda(event);
@@ -120,6 +123,48 @@ export async function saveNovaPayApiCredentials(credentials) {
   if (!value.refreshToken || !value.publicCertificate) throw new Error('NovaPay rotated credentials are incomplete');
   await store().setJSON('integrations/novapay-api-credentials.json', value);
   return value;
+}
+
+// NovaPay refresh tokens rotate after every successful authorization. This
+// short lease ensures two monitor invocations cannot spend the same pair.
+// It stores no credential material and self-expires if an invocation dies.
+export async function claimNovaPayCredentialLease({ durationMs = NOVAPAY_CREDENTIAL_LEASE_MS } = {}) {
+  const now = Date.now();
+  const lease = {
+    ownerId: randomUUID(),
+    acquiredAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + durationMs).toISOString()
+  };
+
+  const created = await store().setJSON(NOVAPAY_CREDENTIAL_LEASE_KEY, lease, { onlyIfNew: true });
+  if (created.modified) return { ...lease, etag: created.etag };
+
+  const current = await store().getWithMetadata(NOVAPAY_CREDENTIAL_LEASE_KEY, { type: 'json' });
+  if (!current) {
+    const retried = await store().setJSON(NOVAPAY_CREDENTIAL_LEASE_KEY, lease, { onlyIfNew: true });
+    return retried.modified ? { ...lease, etag: retried.etag } : null;
+  }
+
+  const expiresAt = Date.parse(String(current.data?.expiresAt || ''));
+  if (Number.isFinite(expiresAt) && expiresAt > now) return null;
+
+  const takenOver = await store().setJSON(NOVAPAY_CREDENTIAL_LEASE_KEY, lease, {
+    onlyIfMatch: current.etag
+  });
+  return takenOver.modified ? { ...lease, etag: takenOver.etag } : null;
+}
+
+export async function releaseNovaPayCredentialLease(lease) {
+  if (!lease?.ownerId || !lease?.etag) return false;
+  const current = await store().getWithMetadata(NOVAPAY_CREDENTIAL_LEASE_KEY, { type: 'json' });
+  if (!current || current.data?.ownerId !== lease.ownerId) return false;
+
+  const released = await store().setJSON(NOVAPAY_CREDENTIAL_LEASE_KEY, {
+    ...current.data,
+    releasedAt: new Date().toISOString(),
+    expiresAt: new Date(0).toISOString()
+  }, { onlyIfMatch: lease.etag });
+  return Boolean(released.modified);
 }
 
 export async function claimFiscalNotification(key, details = {}) {
