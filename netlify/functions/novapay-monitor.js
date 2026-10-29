@@ -204,7 +204,7 @@ export const handler = async (event) => {
   const bootstrap = configuredNovaPayBootstrap();
   const configurationStatus = novaPayBootstrapConfigurationStatus();
   if (!bootstrap || !configurationStatus.loginConfigured) {
-    console.warn('NovaPay monitor paused: API credentials must be reconnected', configurationStatus);
+    console.warn(`NovaPay monitor paused: API credentials must be reconnected ${JSON.stringify(configurationStatus)}`);
     return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'not_configured' }) };
   }
 
