@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   configuredNovaPayBootstrap,
   fetchNovaPayPaymentsWithCredentialLease,
+  novaPayBootstrapConfigurationStatus,
   selectNovaPayCredentials
 } from '../netlify/functions/novapay-monitor.js';
 
@@ -22,6 +23,19 @@ test('requires versioned bootstrap credentials and an epoch', () => {
     refreshToken: 'token',
     publicCertificate: 'certificate',
     credentialEpoch: 'rebinding-1'
+  });
+});
+
+test('reports only boolean bootstrap configuration status', () => {
+  assert.deepEqual(novaPayBootstrapConfigurationStatus({
+    NOVAPAY_REFRESH_TOKEN_V2: ' token ',
+    NOVAPAY_PUBLIC_CERTIFICATE_V2: '',
+    NOVAPAY_CREDENTIAL_EPOCH: ' epoch '
+  }), {
+    refreshTokenConfigured: true,
+    publicCertificateConfigured: false,
+    credentialEpochConfigured: true,
+    loginConfigured: false
   });
 });
 

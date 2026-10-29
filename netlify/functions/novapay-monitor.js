@@ -142,6 +142,15 @@ export function configuredNovaPayBootstrap(env = process.env) {
   return { refreshToken, publicCertificate, credentialEpoch };
 }
 
+export function novaPayBootstrapConfigurationStatus(env = process.env) {
+  return {
+    refreshTokenConfigured: Boolean(String(env.NOVAPAY_REFRESH_TOKEN_V2 || '').trim()),
+    publicCertificateConfigured: Boolean(String(env.NOVAPAY_PUBLIC_CERTIFICATE_V2 || '').trim()),
+    credentialEpochConfigured: Boolean(String(env.NOVAPAY_CREDENTIAL_EPOCH || '').trim()),
+    loginConfigured: Boolean(String(env.NOVAPAY_LOGIN || '').trim())
+  };
+}
+
 export function selectNovaPayCredentials(savedCredentials, bootstrap) {
   if (!bootstrap) return { kind: 'reconnect_required', credentials: null, source: 'none' };
   const savedIsCurrent = (
@@ -193,8 +202,9 @@ export async function fetchNovaPayPaymentsWithCredentialLease({
 export const handler = async (event) => {
   connectOrderStore(event);
   const bootstrap = configuredNovaPayBootstrap();
-  if (!bootstrap || !String(process.env.NOVAPAY_LOGIN || '').trim()) {
-    console.warn('NovaPay monitor paused: API credentials must be reconnected');
+  const configurationStatus = novaPayBootstrapConfigurationStatus();
+  if (!bootstrap || !configurationStatus.loginConfigured) {
+    console.warn('NovaPay monitor paused: API credentials must be reconnected', configurationStatus);
     return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'not_configured' }) };
   }
 
