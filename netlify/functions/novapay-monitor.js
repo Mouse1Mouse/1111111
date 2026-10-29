@@ -130,8 +130,14 @@ function recordCheckboxDeliverySettlement(order, payment) {
   };
 }
 
-function isNovaPayRefreshAuthError(error) {
-  return /NovaPay UserAuthenticationJWT:|refresh token/iu.test(String(error?.message || ''));
+export function classifyNovaPayAuthFailure(error) {
+  const message = String(error?.message || '');
+  if (!/NovaPay UserAuthenticationJWT:|refresh token/iu.test(message)) return null;
+  if (/certificate|public[ _-]?key|key format/iu.test(message)) return 'certificate_rejected';
+  if (/refresh[ _-]?token|token.*(?:expired|invalid|reject)/iu.test(message)) return 'refresh_token_rejected';
+  if (/HTTP 5\d\d/iu.test(message)) return 'upstream_http_5xx';
+  if (/HTTP 4\d\d/iu.test(message)) return 'upstream_http_4xx';
+  return 'user_authentication_rejected';
 }
 
 export function configuredNovaPayBootstrap(env = process.env) {
@@ -183,17 +189,28 @@ export async function fetchNovaPayPaymentsWithCredentialLease({
     const selected = selectNovaPayCredentials(await loadCredentials(), bootstrap);
     if (selected.kind !== 'ready') return { ...selected, payments: [] };
 
-    const payments = await fetchPayments({
-      dateFrom,
-      dateTo,
-      credentials: selected.credentials,
-      onCredentialsRotated: (rotated) => saveCredentials({
-        ...rotated,
-        sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION,
-        credentialEpoch: bootstrap.credentialEpoch
-      })
-    });
-    return { kind: 'completed', payments, source: selected.source };
+    try {
+      const payments = await fetchPayments({
+        dateFrom,
+        dateTo,
+        credentials: selected.credentials,
+        onCredentialsRotated: (rotated) => saveCredentials({
+          ...rotated,
+          sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION,
+          credentialEpoch: bootstrap.credentialEpoch
+        })
+      });
+      return { kind: 'completed', payments, source: selected.source };
+    } catch (error) {
+      if (error && typeof error === 'object') {
+        Object.defineProperty(error, 'novaPayCredentialSource', {
+          value: selected.source,
+          enumerable: false,
+          configurable: true
+        });
+      }
+      throw error;
+    }
   } finally {
     await releaseLease(lease);
   }
@@ -296,11 +313,13 @@ export const handler = async (event) => {
     // Credentials for this legacy NovaPay SOAP API rotate outside the bot.
     // Keep the scheduled reconciliation quiet until they are reconnected; the
     // CheckBox Delivery ETTN flow keeps working independently of this ledger.
-    if (isNovaPayRefreshAuthError(error)) {
-      console.warn('NovaPay monitor paused: API credentials must be reconnected');
+    const authFailure = classifyNovaPayAuthFailure(error);
+    if (authFailure) {
+      const source = error?.novaPayCredentialSource || 'unknown';
+      console.warn(`NovaPay monitor paused: NovaPay API authentication failed source=${source} reason=${authFailure}`);
       return {
         statusCode: 200,
-        body: JSON.stringify({ ok: false, skipped: 'reauthorization_required' })
+        body: JSON.stringify({ ok: false, skipped: 'reauthorization_required', reason: authFailure })
       };
     }
     console.error('NovaPay monitor failed', String(error?.message || error).slice(0, 500));

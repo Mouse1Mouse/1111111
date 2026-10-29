@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  classifyNovaPayAuthFailure,
   configuredNovaPayBootstrap,
   fetchNovaPayPaymentsWithCredentialLease,
   novaPayBootstrapConfigurationStatus,
@@ -39,6 +40,18 @@ test('reports only boolean bootstrap configuration status', () => {
   });
 });
 
+test('uses a safe, actionable category for a NovaPay authentication failure', () => {
+  assert.equal(
+    classifyNovaPayAuthFailure(new Error('NovaPay UserAuthenticationJWT: public certificate is invalid')),
+    'certificate_rejected'
+  );
+  assert.equal(
+    classifyNovaPayAuthFailure(new Error('NovaPay UserAuthenticationJWT: access denied')),
+    'user_authentication_rejected'
+  );
+  assert.equal(classifyNovaPayAuthFailure(new Error('NovaPay GetPaymentsList: HTTP 500')), null);
+});
+
 test('uses only a stored pair from the active epoch', () => {
   const stored = {
     refreshToken: 'rotated-token',
@@ -72,6 +85,23 @@ test('never retries a rejected stored pair with the configured bootstrap pair', 
     }
   }), /UserAuthenticationJWT/);
   assert.deepEqual(seen, ['stored-token']);
+});
+
+test('retains the safe source marker when a credential pair is rejected', async () => {
+  await assert.rejects(
+    () => fetchNovaPayPaymentsWithCredentialLease({
+      dateFrom: '2026-10-01',
+      dateTo: '2026-10-22',
+      bootstrap,
+      loadCredentials: async () => null,
+      acquireLease: async () => ({ ownerId: 'one', etag: 'one' }),
+      releaseLease: async () => true,
+      fetchPayments: async () => {
+        throw new Error('NovaPay UserAuthenticationJWT: access denied');
+      }
+    }),
+    (error) => error?.novaPayCredentialSource === 'bootstrap'
+  );
 });
 
 test('defers a concurrent run instead of spending the same rotating pair twice', async () => {
