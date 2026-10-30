@@ -23,7 +23,10 @@ import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
 // final fiscalization of an ETTN project after the buyer receives the parcel.
 // The schedule is declared once in netlify.toml. A single source avoids
 // ambiguity about whether scheduled invocations can overlap.
-const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v3-serialized';
+// Bump this generation when a fresh configured pair must supersede a rotated
+// pair already stored in Blobs. The old record remains intact but is ineligible
+// until the new pair authenticates and saves its successor.
+const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v4-recovery-20261030';
 
 function kyivDate(daysAgo = 0) {
   const date = new Date(Date.now() - daysAgo * 86400000);
