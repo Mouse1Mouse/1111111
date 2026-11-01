@@ -1,6 +1,6 @@
 import { cleanText } from './order-core.js';
 
-export const PRODUCT_CATALOG_VERSION = '2026-07-28';
+export const PRODUCT_CATALOG_VERSION = '2026-11-01';
 
 const product = (sku, name, price, kind, size, aliases = []) => Object.freeze({
   sku,
@@ -17,16 +17,16 @@ export const SOTA_PRODUCT_CATALOG = Object.freeze([
   product('MIVA-BED-150', 'Комплект постільної білизни — 1,5-спальний', 1550, 'bed_set', '150', [
     'півтораспальний', 'півтора спальне', '1,5-спальний', '1.5-спальний', 'полуторний'
   ]),
-  product('MIVA-BED-200', 'Комплект постільної білизни — двоспальний', 1650, 'bed_set', '200', [
+  product('MIVA-BED-200', 'Комплект постільної білизни — двоспальний', 1700, 'bed_set', '200', [
     'двоспальний', 'двохспальний', 'двоспальне'
   ]),
-  product('MIVA-BED-EURO', 'Комплект постільної білизни — Євро', 1700, 'bed_set', 'euro', [
+  product('MIVA-BED-EURO', 'Комплект постільної білизни — Євро', 1750, 'bed_set', 'euro', [
     'євро комплект', 'комплект євро', 'евро комплект'
   ]),
-  product('MIVA-BED-EURO-2', 'Комплект постільної білизни — Євро двоспальний', 1750, 'bed_set', 'euro_2', [
+  product('MIVA-BED-EURO-2', 'Комплект постільної білизни — Євро двоспальний', 1800, 'bed_set', 'euro_2', [
     'євро двоспальний', 'євро двохспальний', 'евро двоспальний', 'євро-двоспальний'
   ]),
-  product('MIVA-BED-FAMILY', 'Комплект постільної білизни — сімейний', 1850, 'bed_set', 'family', [
+  product('MIVA-BED-FAMILY', 'Комплект постільної білизни — сімейний', 1900, 'bed_set', 'family', [
     'сімейний', 'семейний', 'сімейне'
   ]),
   product('MIVA-BED-CUSTOM', 'Комплект постільної білизни — індивідуальний розмір', 1, 'bed_set', 'custom', [

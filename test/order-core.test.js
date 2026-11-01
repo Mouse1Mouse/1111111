@@ -77,8 +77,8 @@ function draft(overrides = {}) {
     customerName: 'Тестовий клієнт',
     phone: '+380671234567',
     email: 'client@example.com',
-    itemsSummary: 'Комплект постільної білизни 1 шт × 1450 грн',
-    totalAmount: '1650',
+    itemsSummary: 'Комплект постільної білизни 1 шт × 1700 грн',
+    totalAmount: '1700',
     prepaymentAmount: '200',
     ttn: '-',
     ...overrides
@@ -120,7 +120,7 @@ test('creates a stable safe order identifier', () => {
 test('runs the expected prepayment, TTN, NovaPay and receipt lifecycle', () => {
   const created = createOrder(draft(), { now: NOW, chatId: '123' });
   assert.equal(created.status, ORDER_STATUSES.AWAITING_PREPAYMENT);
-  assert.equal(created.codAmount, 1450);
+  assert.equal(created.codAmount, 1500);
 
   const prepaid = markPrepaymentReceived(created, '200,00', '2026-07-22T10:05:00.000Z');
   assert.equal(prepaid.status, ORDER_STATUSES.READY_TO_SHIP);
@@ -129,17 +129,17 @@ test('runs the expected prepayment, TTN, NovaPay and receipt lifecycle', () => {
   assert.equal(shipped.status, ORDER_STATUSES.AWAITING_NOVAPAY);
 
   const paid = markNovaPayReceived(shipped, {
-    grossAmount: 1450,
-    feeAmount: 7.25,
-    netAmount: 1442.75,
+    grossAmount: 1500,
+    feeAmount: 7.5,
+    netAmount: 1492.5,
     ttn: '20451234567890',
     registryNumber: 'BO011739177',
     settledAt: '2026-07-23T12:00:00.000Z'
   }, '2026-07-23T12:00:00.000Z');
   assert.equal(paid.status, ORDER_STATUSES.READY_FOR_RECEIPT);
-  assert.equal(paid.novaPayGrossAmount, 1450);
-  assert.equal(paid.novaPayFeeAmount, 7.25);
-  assert.equal(paid.novaPayNetAmount, 1442.75);
+  assert.equal(paid.novaPayGrossAmount, 1500);
+  assert.equal(paid.novaPayFeeAmount, 7.5);
+  assert.equal(paid.novaPayNetAmount, 1492.5);
   assert.equal(paid.novaPayRegistryNumber, 'BO011739177');
 
   const closed = markReceiptDone(paid, 'ФН-12345/2026', '2026-07-23T12:05:00.000Z');
@@ -200,20 +200,20 @@ test('prepares an idempotent Checkbox fiscal draft only after all payments are c
 
   const paid = markNovaPayReceived(
     attachTtn(markPrepaymentReceived(created, 200), '20451234567890'),
-    1450,
+    1500,
     '2026-07-23T12:00:00.000Z'
   );
   const prepared = prepareFiscalReceiptDraft(paid, '2026-07-23T12:05:00.000Z');
   assert.equal(prepared.fiscalReceipt.provider, 'checkbox');
   assert.equal(prepared.fiscalReceipt.idempotencyKey, `miva:${created.id}:sale:v4`);
-  assert.equal(prepared.fiscalReceipt.totalAmount, 1650);
+  assert.equal(prepared.fiscalReceipt.totalAmount, 1700);
   assert.equal(prepared.fiscalReceipt.catalogStatus, 'matched');
   assert.equal(prepared.fiscalReceipt.items[0].sku, 'MIVA-BED-200');
   assert.deepEqual(
     prepared.fiscalReceipt.payments.map(({ source, amount }) => ({ source, amount })),
     [
       { source: 'monobank_prepayment', amount: 200 },
-      { source: 'novapay_cod', amount: 1450 }
+      { source: 'novapay_cod', amount: 1500 }
     ]
   );
   assert.equal(
@@ -244,10 +244,10 @@ test('matches every canonical SOTA catalog name back to its own article', () => 
 test('matches all standard bedding set labels to SOTA articles', () => {
   const cases = [
     ['Півтораспальний комплект, наволочки 50×70', 1550, 'MIVA-BED-150'],
-    ['Двохспальний комплект, наволочки 70×70', 1650, 'MIVA-BED-200'],
-    ['Комплект Євро, однотон', 1700, 'MIVA-BED-EURO'],
-    ['Євро двоспальний комплект', 1750, 'MIVA-BED-EURO-2'],
-    ['Сімейний комплект постільної білизни', 1850, 'MIVA-BED-FAMILY'],
+    ['Двохспальний комплект, наволочки 70×70', 1700, 'MIVA-BED-200'],
+    ['Комплект Євро, однотон', 1750, 'MIVA-BED-EURO'],
+    ['Євро двоспальний комплект', 1800, 'MIVA-BED-EURO-2'],
+    ['Сімейний комплект постільної білизни', 1900, 'MIVA-BED-FAMILY'],
     ['Комплект індивідуальний розмір', 2100, 'MIVA-BED-CUSTOM']
   ];
   for (const [summary, total, sku] of cases) {
@@ -281,13 +281,13 @@ test('matches fitted sheets, duvets, pillowcases and flat sheets by exact size',
 test('creates separate fiscal lines for a bedding set and fitted sheet', () => {
   const result = matchOrderSummaryToCatalog(
     '«Смарагд» Євро двоспальний комплект; додатково простирадло на резинці 160×200×30',
-    2200
+    2250
   );
   assert.deepEqual(result.items.map((item) => item.sku), [
     'MIVA-BED-EURO-2',
     'MIVA-SHEET-FITTED-160X200X30'
   ]);
-  assert.deepEqual(result.items.map((item) => item.totalAmount), [1750, 450]);
+  assert.deepEqual(result.items.map((item) => item.totalAmount), [1800, 450]);
   assert.equal(result.status, 'matched');
 });
 
@@ -303,7 +303,7 @@ test('records manager confirmation without changing the fiscal idempotency key',
   const created = createOrder(draft(), { now: NOW, chatId: '123' });
   const paid = markNovaPayReceived(
     attachTtn(markPrepaymentReceived(created, 200), '20451234567890'),
-    1450,
+    1500,
     '2026-07-23T12:00:00.000Z'
   );
   const prepared = prepareFiscalReceiptDraft(paid, '2026-07-23T12:05:00.000Z');
@@ -407,23 +407,23 @@ test('does not accept a wrong payment or NovaPay confirmation without a TTN', ()
   const created = createOrder(draft(), { now: NOW, chatId: '123' });
   assert.throws(() => markPrepaymentReceived(created, 199), /Expected prepayment/);
   const prepaid = markPrepaymentReceived(created, 200);
-  assert.throws(() => markNovaPayReceived(prepaid, 1450), /TTN is not attached/);
+  assert.throws(() => markNovaPayReceived(prepaid, 1500), /TTN is not attached/);
   const shipped = attachTtn(prepaid, '20451234567890');
-  assert.throws(() => markNovaPayReceived(shipped, 1449), /Expected NovaPay amount/);
+  assert.throws(() => markNovaPayReceived(shipped, 1499), /Expected NovaPay amount/);
   assert.throws(
     () => markNovaPayReceived(shipped, {
-      grossAmount: 1450,
+      grossAmount: 1500,
       feeAmount: 0,
-      netAmount: 1450,
+      netAmount: 1500,
       ttn: '20451234567890'
     }),
     /Expected NovaPay fee/
   );
   assert.throws(
     () => markNovaPayReceived(shipped, {
-      grossAmount: 1450,
-      feeAmount: 7.25,
-      netAmount: 1442.75,
+      grossAmount: 1500,
+      feeAmount: 7.5,
+      netAmount: 1492.5,
       ttn: '20450000000000'
     }),
     /TTN does not match/
@@ -481,7 +481,7 @@ test('keeps Monobank prepayment separate from NovaPay settlement and ignores rep
 test('validates required customer and amount data', () => {
   assert.throws(() => createOrder(draft({ phone: '123' })), /Missing required/);
   assert.throws(() => createOrder(draft({ email: 'bad-email' })), /Invalid customer email/);
-  assert.throws(() => createOrder(draft({ prepaymentAmount: '1700' })), /Invalid order amounts/);
+  assert.throws(() => createOrder(draft({ prepaymentAmount: '1701' })), /Invalid order amounts/);
 });
 
 test('normalizes common Ukrainian phone formats without inventing missing digits', () => {

@@ -1,6 +1,19 @@
 import React from "react";
 import ProductCard from "./ProductCard";
 
+const BED_SET_OPTIONS = [
+  { label: "Півтораспальний (підковдра 145×220 — 1 шт., 145×215 простирадло — 1 шт.)", price: 1550 },
+  { label: "Двоспальний (підковдра 175×220 — 1 шт., 200×220 простирадло — 1 шт.)", price: 1700 },
+  { label: "Євро (підковдра 200×220 — 1 шт., 200×220 простирадло — 1 шт.)", price: 1750 },
+  { label: "Євро Двоспальний (підковдра 200×220 — 1 шт., 220×240 простирадло — 1 шт.)", price: 1800 },
+  { label: "Сімейний (2 підковдри 145×220, 220×240 простирадло — 1 шт.)", price: 1900 }
+];
+
+const PILLOW_OPTIONS = [
+  { label: "Наволочки 50×70 (2 шт.)" },
+  { label: "Наволочки 70×70 (2 шт.)" }
+];
+
 export default function Gallery() {
   const products = [
     { 
@@ -26,17 +39,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-49_gxyhm8.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-06-23_gv4cy0.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "5",
@@ -47,17 +51,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-39-39_xx2pza.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836010/photo_2025-06-10_01-39-45_yxc5eq.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "6",
@@ -68,17 +63,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/IMG_7341_yausbs.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/IMG_7342_yyipsl.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "7",
@@ -89,17 +75,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_10_2025-08-04_21-36-01_qg7qjl.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_9_2025-08-04_21-36-01_rpxtzw.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "9",
@@ -110,17 +87,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-01-46_jgmfur.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836009/photo_2025-06-10_02-01-56_rxvbng.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "10",
@@ -131,17 +99,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-37_jxxfxy.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-28-39_mkbhth.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "11",
@@ -152,17 +111,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-30-05_dbjcml.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-30-08_nnwr6y.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "12",
@@ -173,17 +123,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-41-22_baquqe.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836006/photo_2025-06-10_18-41-18_iyoejr.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "13",
@@ -194,17 +135,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836008/photo_2025-06-10_18-45-50_dypf47.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-45-58_cy3v6s.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "14",
@@ -215,17 +147,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-48-57_u9aihf.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_2025-06-10_18-49-00_qdxyco.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "15",
@@ -236,17 +159,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836007/photo_3_2025-07-18_13-14-59_z9fvck.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752836006/photo_4_2025-07-18_13-14-59_ubtpl3.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "16",
@@ -257,17 +171,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_2_2025-07-18_14-22-25_frunfd.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752837752/photo_3_2025-07-18_14-22-25_xrsjhy.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "17",
@@ -278,17 +183,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336209/photo_19_2025-08-04_21-36-01_cxwmzb.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336209/photo_21_2025-08-04_21-36-01_ysouqi.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "18",
@@ -299,17 +195,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_4_2025-07-18_14-27-12_igsyhg.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_6_2025-07-18_14-27-12_odvut7.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "19",
@@ -320,17 +207,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_8_2025-07-18_14-27-12_itd5og.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838095/photo_9_2025-07-18_14-27-12_bcm4ci.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "20",
@@ -341,17 +219,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_3_2025-07-18_14-27-12_voamsx.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752838096/photo_2_2025-07-18_14-27-12_gfl6z3.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "21",
@@ -362,17 +231,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752839520/photo_2_2025-07-18_14-50-14_yguf6b.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1752839468/photo_1_2025-07-18_14-50-14_v08hcu.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "22",
@@ -382,17 +242,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336212/photo_2_2025-08-04_21-36-01_s6s9i4.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336212/photo_1_2025-08-04_21-36-01_yogmon.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "23",
@@ -403,17 +254,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_17_2025-08-04_21-36-01_dfzhme.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_16_2025-08-04_21-36-01_j1xhox.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "24",
@@ -424,17 +266,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_12_2025-08-04_21-36-01_oxsz5v.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336210/photo_13_2025-08-04_21-36-01_gbb0cs.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "25",
@@ -445,17 +278,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_6_2025-08-04_21-36-01_nq4y2q.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1754336211/photo_7_2025-08-04_21-36-01_feuafh.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "26",
@@ -466,17 +290,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_6_2025-08-19_21-31-40_z0ggck.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1755631912/photo_4_2025-08-19_21-31-40_houwze.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     },
     { 
       id: "27",
@@ -487,17 +302,8 @@ export default function Gallery() {
         "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_1_2026-04-28_00-26-50_brb1yy.jpg",
         "https://res.cloudinary.com/digiji8uz/image/upload/v1777328827/photo_5_2026-04-28_00-26-50_w3ys3b.jpg"
       ],
-      setOptions: [
-        { label: "Півтораспальний (145×220 ковдра, 145×215 простирадло)", price: 1550 },
-        { label: "Двоспальний (175×220 ковдра, 200×220 простирадло)", price: 1650 },
-        { label: "Євро (200×220 ковдра, 200×220 простирадло)", price: 1700 },
-        { label: "Євро Двоспальний (200×220 ковдра, 220×240 простирадло)", price: 1750 },
-        { label: "Сімейний (2×145×220 ковдри, 220×240 простирадло)", price: 1850 }
-      ],
-      pillowOptions: [
-        { label: "50×70 (прямокутні)" },
-        { label: "70×70 (квадратні)" }
-      ]
+      setOptions: BED_SET_OPTIONS,
+      pillowOptions: PILLOW_OPTIONS
     }
   ];
 

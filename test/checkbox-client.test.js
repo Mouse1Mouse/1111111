@@ -22,12 +22,12 @@ test('builds a cashless Checkbox receipt with an explicit partial-payment discou
   const receipt = buildCheckboxSalePayload({
     receiptId: 'f8b67e1e-54d7-4b0d-9e99-0de3de7c3cec',
     orderId: 'MIVA-TEST-1',
-    paymentAmount: 1450,
+    paymentAmount: 1500,
     customer: { phone: '+380671234567' },
-    items: [{ sku: 'MIVA-BED-200', name: 'Комплект постільної білизни', quantity: 1, unitPrice: 1650 }]
+    items: [{ sku: 'MIVA-BED-200', name: 'Комплект постільної білизни', quantity: 1, unitPrice: 1700 }]
   });
-  assert.equal(receipt.payments[0].value, 145000);
-  assert.equal(receipt.goods[0].good.price, 165000);
+  assert.equal(receipt.payments[0].value, 150000);
+  assert.equal(receipt.goods[0].good.price, 170000);
   assert.deepEqual(receipt.discounts, [{
     type: 'DISCOUNT', mode: 'VALUE', value: 20000, name: 'Часткова оплата'
   }]);
