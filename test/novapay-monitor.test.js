@@ -56,10 +56,14 @@ test('uses only a stored pair from the active epoch', () => {
   const stored = {
     refreshToken: 'rotated-token',
     publicCertificate: 'rotated-certificate',
-    sourceVersion: 'jwt-rotation-v4-recovery-20261030',
+    sourceVersion: 'jwt-rotation-v5-normalized-pem-20261102',
     credentialEpoch: bootstrap.credentialEpoch
   };
   assert.equal(selectNovaPayCredentials(stored, bootstrap).source, 'stored');
+  assert.equal(
+    selectNovaPayCredentials({ ...stored, sourceVersion: 'jwt-rotation-v4-recovery-20261030' }, bootstrap).source,
+    'bootstrap'
+  );
   assert.equal(selectNovaPayCredentials({ ...stored, sourceVersion: 'jwt-rotation-v3-serialized' }, bootstrap).source, 'bootstrap');
   assert.equal(selectNovaPayCredentials({ ...stored, credentialEpoch: 'old-epoch' }, bootstrap).source, 'bootstrap');
   assert.equal(selectNovaPayCredentials(null, null).kind, 'reconnect_required');
@@ -69,7 +73,7 @@ test('never retries a rejected stored pair with the configured bootstrap pair', 
   const stored = {
     refreshToken: 'stored-token',
     publicCertificate: 'stored-certificate',
-    sourceVersion: 'jwt-rotation-v4-recovery-20261030',
+    sourceVersion: 'jwt-rotation-v5-normalized-pem-20261102',
     credentialEpoch: bootstrap.credentialEpoch
   };
   const seen = [];
@@ -144,7 +148,7 @@ test('defers a concurrent run instead of spending the same rotating pair twice',
   assert.deepEqual(saved, [{
     refreshToken: 'next-token',
     publicCertificate: 'next-certificate',
-    sourceVersion: 'jwt-rotation-v4-recovery-20261030',
+    sourceVersion: 'jwt-rotation-v5-normalized-pem-20261102',
     credentialEpoch: bootstrap.credentialEpoch
   }]);
 });

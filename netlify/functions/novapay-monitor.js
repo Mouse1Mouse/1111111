@@ -26,7 +26,7 @@ import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
 // Bump this generation when a fresh configured pair must supersede a rotated
 // pair already stored in Blobs. The old record remains intact but is ineligible
 // until the new pair authenticates and saves its successor.
-const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v4-recovery-20261030';
+const NOVAPAY_CREDENTIAL_SOURCE_VERSION = 'jwt-rotation-v5-normalized-pem-20261102';
 
 function kyivDate(daysAgo = 0) {
   const date = new Date(Date.now() - daysAgo * 86400000);
