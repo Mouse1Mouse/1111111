@@ -35,12 +35,21 @@ function novaPayDate(value) {
 
 export function normalizeNovaPayPublicCertificate(value) {
   value = String(value || '').trim();
-  if (!value.startsWith('base64:')) return value;
-  try {
-    return Buffer.from(value.slice('base64:'.length), 'base64').toString('utf8').trim();
-  } catch {
-    return '';
+  if (value.startsWith('base64:')) {
+    try {
+      value = Buffer.from(value.slice('base64:'.length), 'base64').toString('utf8').trim();
+    } catch {
+      return '';
+    }
   }
+
+  // Netlify variables are sometimes pasted from JSON, where PEM line breaks
+  // become literal `\\n` or `\\\\n`. NovaPay requires actual line feeds.
+  return value
+    .replace(/\\+r\\+n/g, '\n')
+    .replace(/\\+n/g, '\n')
+    .replace(/\r\n?/g, '\n')
+    .trim();
 }
 
 function publicCertificate(env = process.env) {

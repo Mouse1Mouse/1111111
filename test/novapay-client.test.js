@@ -21,6 +21,18 @@ test('normalizes a base64-prefixed explicit NovaPay certificate', () => {
   assert.equal(normalizeNovaPayPublicCertificate(' plain-certificate '), 'plain-certificate');
 });
 
+test('normalizes JSON-escaped PEM line breaks before NovaPay authentication', () => {
+  const pem = '-----BEGIN PUBLIC KEY-----\\nMIIBCgKCAQEA\\n-----END PUBLIC KEY-----';
+  assert.equal(
+    normalizeNovaPayPublicCertificate(pem),
+    '-----BEGIN PUBLIC KEY-----\nMIIBCgKCAQEA\n-----END PUBLIC KEY-----'
+  );
+  assert.equal(
+    normalizeNovaPayPublicCertificate(pem.replaceAll('\\n', '\\\\n')),
+    '-----BEGIN PUBLIC KEY-----\nMIIBCgKCAQEA\n-----END PUBLIC KEY-----'
+  );
+});
+
 test('normalizes JSON payments and matches by TTN and gross amount', () => {
   const payments = normalizeNovaPayPayments(JSON.stringify({ payments: [{
     transactionId: '2818799776',
