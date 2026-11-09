@@ -30,6 +30,7 @@ import {
 import { createPackingLabelDocument, wrapPackingLabelText } from '../netlify/lib/packing-label.js';
 import {
   buildInternetDocumentPayload,
+  buildNovaPoshtaCargoDescription,
   createNovaPoshtaWaybill,
   downloadNovaPoshtaMarking,
   formatNovaPoshtaDate,
@@ -960,6 +961,7 @@ test('recovers confirmed shipment options from a Telegram preview', () => {
     '🚚 Перевірка перед створенням ТТН',
     '📦 Вага: 2.0 кг',
     '📐 Розмір: 40×30×20 см',
+    '🏷 Напис на етикетці: Рожевий 567',
     '🚛 Доставку оплачує: клієнт',
     '📤 Звідки: Нетішин, відділення №2'
   ].join('\n')), {
@@ -968,9 +970,36 @@ test('recovers confirmed shipment options from a Telegram preview', () => {
     length: 40,
     width: 30,
     height: 20,
-    deliveryPayer: 'Recipient'
+    deliveryPayer: 'Recipient',
+    description: 'Рожевий 567'
   });
   assert.equal(parseShipmentPreviewOptions('Вага: 2 кг'), null);
+});
+
+test('prioritizes the confirmed color and order number for the Nova Poshta label', () => {
+  assert.equal(buildNovaPoshtaCargoDescription({
+    customerOrderNumber: '567',
+    color: 'Рожевий',
+    itemsSummary: 'Комплект постільної білизни Євро 1 шт × 1750 грн'
+  }), 'Рожевий 567');
+  assert.equal(buildNovaPoshtaCargoDescription({
+    customerOrderNumber: '567',
+    color: '',
+    itemsSummary: 'Комплект постільної білизни Євро 1 шт × 1750 грн'
+  }), '№567 Комплект постільної білизни Євр');
+  assert.equal(buildNovaPoshtaCargoDescription({
+    customerOrderNumber: '567',
+    color: 'Рожевий'
+  }, { description: 'Рожевий 567' }), 'Рожевий 567');
+});
+
+test('preserves an extracted color through an order for the Nova Poshta label', () => {
+  const extracted = normalizeExtractedDraft(draft({ color: 'Рожевий' }));
+  const order = createOrder(extracted.draft, { now: NOW, chatId: '123' });
+  assert.equal(order.color, 'Рожевий');
+  assert.equal(buildNovaPoshtaCargoDescription(order), 'Рожевий 1542');
+  const updated = updateOrderDetails(order, { color: 'Бежевий' }, NOW);
+  assert.equal(buildNovaPoshtaCargoDescription(updated), 'Бежевий 1542');
 });
 
 test('retries a temporary Nova Poshta API rate limit', async () => {

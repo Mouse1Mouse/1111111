@@ -332,11 +332,13 @@ export function parseSenderWarehouseSelection(value) {
 }
 
 export function parseShipmentPreviewOptions(value) {
-  const text = cleanText(value, 4000);
+  const rawText = String(value ?? '').trim();
+  const text = cleanText(rawText, 4000);
   const senderMatch = text.match(/Звідки:\s*(.+?),\s*відділення\s*№\s*(\d+)/iu);
   const weightMatch = text.match(/Вага:\s*(\d+(?:[.,]\d+)?)\s*кг/iu);
   const dimensionsMatch = text.match(/Розмір:\s*(\d+(?:[.,]\d+)?)\s*[×xх]\s*(\d+(?:[.,]\d+)?)\s*[×xх]\s*(\d+(?:[.,]\d+)?)\s*см/iu);
   const payerMatch = text.match(/Доставку\s+оплачує:\s*(MIVA|клієнт)/iu);
+  const descriptionMatch = rawText.match(/(?:^|\r?\n)🏷\s*Напис\s+на\s+етикетці:\s*(.+?)(?:\r?\n|$)/iu);
   if (!senderMatch || !weightMatch || !dimensionsMatch || !payerMatch) return null;
 
   const number = String(Number(senderMatch[2]));
@@ -354,7 +356,8 @@ export function parseShipmentPreviewOptions(value) {
     length: values[1],
     width: values[2],
     height: values[3],
-    deliveryPayer: payerMatch[1].toLocaleUpperCase('uk-UA') === 'MIVA' ? 'Sender' : 'Recipient'
+    deliveryPayer: payerMatch[1].toLocaleUpperCase('uk-UA') === 'MIVA' ? 'Sender' : 'Recipient',
+    ...(descriptionMatch ? { description: cleanText(descriptionMatch[1], 36) } : {})
   };
 }
 
@@ -447,6 +450,26 @@ function configuredDimensions(options = {}) {
   };
 }
 
+export function buildNovaPoshtaCargoDescription(order = {}, options = {}) {
+  const explicitDescription = cleanText(options.description, 36);
+  if (explicitDescription) return explicitDescription;
+
+  const orderNumber = cleanText(order.customerOrderNumber, 12);
+  const color = cleanText(order.color, 80);
+  if (color) {
+    const suffix = orderNumber ? ` ${orderNumber}` : '';
+    const colorLength = Math.max(1, 36 - suffix.length);
+    return cleanText(`${cleanText(color, colorLength)}${suffix}`, 36);
+  }
+
+  return cleanText(
+    [order.customerOrderNumber ? `№${order.customerOrderNumber}` : '', order.itemsSummary]
+      .filter(Boolean)
+      .join(' ') || process.env.NOVA_POSHTA_CARGO_DESCRIPTION || 'Постільна білизна',
+    36
+  );
+}
+
 export async function prepareNovaPoshtaShipment(order, options = {}) {
   const totalAmount = parseAmount(order?.totalAmount);
   const codAmount = parseAmount(order?.codAmount);
@@ -480,11 +503,7 @@ export async function prepareNovaPoshtaShipment(order, options = {}) {
     weight: positiveNumber(options.weight, STANDARD_PARCEL.weight),
     dimensions: configuredDimensions(options),
     seatsAmount: 1,
-    description: cleanText(
-      options.description || [order.customerOrderNumber ? `№${order.customerOrderNumber}` : '', order.itemsSummary].filter(Boolean).join(' ') ||
-      process.env.NOVA_POSHTA_CARGO_DESCRIPTION || 'Постільна білизна',
-      36
-    ),
+    description: buildNovaPoshtaCargoDescription(order, options),
     deliveryPayer: options.deliveryPayer === 'Sender' ? 'Sender' : 'Recipient',
     sender
   };

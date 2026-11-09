@@ -126,6 +126,7 @@ const INPUT_SESSION_MODES = new Set([
   'await_np_sender_warehouse',
   'await_np_weight',
   'await_np_dimensions',
+  'await_np_description',
   'await_ai_edit',
   'await_order_edit',
   'await_ttn',
@@ -337,6 +338,7 @@ function shipmentPreviewHtml(shipment) {
     `📍 ${escapeHtml(shipment.recipientCityName)}, ${escapeHtml(shipment.warehouseDescription)}`,
     `📦 Вага: <b>${escapeHtml(weight)}</b>`,
     `📐 Розмір: <b>${Number(dimensions.length)}×${Number(dimensions.width)}×${Number(dimensions.height)} см</b>`,
+    `🏷 Напис на етикетці: <b>${escapeHtml(shipment.description || 'Постільна білизна')}</b>`,
     `💰 Оголошена вартість: <b>${money(shipment.totalAmount)}</b>`,
     `💵 Післяплата NovaPay: <b>${money(shipment.codAmount)}</b>`,
     `🚛 Доставку оплачує: <b>${shipment.deliveryPayer === 'Sender' ? 'MIVA' : 'клієнт'}</b>`,
@@ -367,6 +369,7 @@ function shipmentPreviewKeyboard(shipment) {
     rows.push([{ text: `⚖️ Змінити вагу (${shipment.weight} кг)`, callback_data: `np_weight:other:${shipment.orderId}` }]);
   }
   rows.push([{ text: '📐 Змінити розмір пакунка', callback_data: `np_dims:${shipment.orderId}` }]);
+  rows.push([{ text: '🏷 Змінити напис на етикетці', callback_data: `np_description:${shipment.orderId}` }]);
   const nextPayer = shipment.deliveryPayer === 'Sender' ? 'Recipient' : 'Sender';
   rows.push([{
     text: shipment.deliveryPayer === 'Sender' ? '💳 Платитиме клієнт' : '💳 Платитиме MIVA',
@@ -485,6 +488,12 @@ const AI_EDIT_FIELDS = Object.freeze({
     prompt: 'Введіть відділення/поштомат або -:',
     validate: (value) => value === '-' || cleanText(value, 180).length >= 1
   },
+  color: {
+    key: 'color',
+    label: 'Колір для ТТН',
+    prompt: 'Введіть колір або принт для етикетки ТТН. Наприклад: Рожевий',
+    validate: (value) => cleanText(value, 80).length >= 2
+  },
   items: { key: 'itemsSummary', label: 'Товари', prompt: STEPS.itemsSummary.prompt, validate: STEPS.itemsSummary.validate },
   total: { key: 'totalAmount', label: 'Повна сума', prompt: STEPS.totalAmount.prompt, validate: STEPS.totalAmount.validate },
   prepay: {
@@ -505,7 +514,7 @@ const AI_EDIT_FIELDS = Object.freeze({
 });
 
 const ORDER_EDIT_FIELDS = Object.freeze(Object.fromEntries(
-  ['name', 'phone', 'city', 'branch', 'items', 'total', 'prepay']
+  ['name', 'phone', 'city', 'branch', 'color', 'items', 'total', 'prepay']
     .map((key) => [key, AI_EDIT_FIELDS[key]])
 ));
 
@@ -575,6 +584,7 @@ function formatAiDraftHtml(session) {
     `📧 ${escapeHtml(draft.email === '-' ? 'не вказано' : draft.email)}`,
     `🏙 Місто: ${escapeHtml(draft.city || 'не розпізнано')}`,
     `📦 Відділення: ${escapeHtml(draft.branch || 'не розпізнано')}`,
+    `🎨 Колір для ТТН: ${escapeHtml(draft.color || 'не розпізнано')}`,
     '',
     `<b>Товари:</b> ${escapeHtml(draft.itemsSummary || 'не розпізнано')}`,
     `💰 Повна сума: <b>${amount(draft.totalAmount)}</b>`,
@@ -799,7 +809,18 @@ async function handleSessionInput(bot, chatId, text, session) {
       session.previewMessageId,
       '⏳ Перевіряю відправника, обидва відділення та контактні дані в Новій пошті…'
     );
-    const shipmentOptions = { senderWarehouse };
+    const previousShipment = session.shipment || {};
+    const previousDimensions = previousShipment.dimensions || {};
+    const shipmentOptions = {
+      ...(session.shipmentOptions || {}),
+      senderWarehouse,
+      weight: previousShipment.weight,
+      length: previousDimensions.length,
+      width: previousDimensions.width,
+      height: previousDimensions.height,
+      deliveryPayer: previousShipment.deliveryPayer,
+      description: previousShipment.description
+    };
     let shipment = null;
     try {
       shipment = await prepareNovaPoshtaShipment(order, shipmentOptions);
@@ -807,6 +828,7 @@ async function handleSessionInput(bot, chatId, text, session) {
         ...session,
         mode: 'confirm_nova_poshta_ttn',
         senderWarehouse,
+        shipmentOptions,
         shipment,
         updatedAt: new Date().toISOString()
       };
@@ -907,6 +929,23 @@ async function handleSessionInput(bot, chatId, text, session) {
       ...session,
       mode: 'confirm_nova_poshta_ttn',
       shipment: { ...session.shipment, dimensions: { length, width, height } },
+      updatedAt: new Date().toISOString()
+    };
+    await saveSession(chatId, updatedSession);
+    await sendShipmentPreview(bot, chatId, updatedSession.shipment, session.previewMessageId);
+    return;
+  }
+
+  if (session.mode === 'await_np_description') {
+    const description = cleanText(text, 36);
+    if (description.length < 2 || description === '-') {
+      await bot.sendMessage(chatId, 'Введіть короткий напис до 36 символів. Наприклад: Рожевий 567');
+      return;
+    }
+    const updatedSession = {
+      ...session,
+      mode: 'confirm_nova_poshta_ttn',
+      shipment: { ...session.shipment, description },
       updatedAt: new Date().toISOString()
     };
     await saveSession(chatId, updatedSession);
@@ -1276,6 +1315,28 @@ async function handleCallback(bot, callback) {
       chatId,
       callback.message?.message_id,
       'Введіть розміри запакованого замовлення у сантиметрах: довжина ширина висота. Наприклад: 40 30 20',
+      { reply_markup: { inline_keyboard: [] } }
+    );
+    return;
+  }
+
+  if (action === 'np_description') {
+    const session = await getSessionForModes(chatId, ['confirm_nova_poshta_ttn']);
+    if (session?.mode !== 'confirm_nova_poshta_ttn' || session.orderId !== id) {
+      await bot.sendMessage(chatId, 'Ця підготовка ТТН уже неактуальна. Відкрийте замовлення ще раз.');
+      return;
+    }
+    await saveSession(chatId, {
+      ...session,
+      mode: 'await_np_description',
+      previewMessageId: callback.message?.message_id,
+      updatedAt: new Date().toISOString()
+    });
+    await replaceOrSendMessage(
+      bot,
+      chatId,
+      callback.message?.message_id,
+      'Введіть напис, який має бути на етикетці ТТН (до 36 символів). Наприклад: <code>Рожевий 567</code>',
       { reply_markup: { inline_keyboard: [] } }
     );
     return;

@@ -26,6 +26,10 @@ const EXTRACTION_SCHEMA = {
     email: { type: 'string', description: 'Customer email, or empty string.' },
     city: { type: 'string', description: 'Delivery city, or empty string.' },
     branch: { type: 'string', description: 'Nova Poshta branch or locker, or empty string.' },
+    color: {
+      type: 'string',
+      description: 'Exact color or print selected by the customer for the Nova Poshta label, or empty string when it is not explicit.'
+    },
     itemsSummary: {
       type: 'string',
       description: 'Ordered products with size, quantity and unit price when visible, one product per line.'
@@ -53,6 +57,7 @@ const EXTRACTION_SCHEMA = {
     'email',
     'city',
     'branch',
+    'color',
     'itemsSummary',
     'totalAmount',
     'prepaymentAmount',
@@ -71,6 +76,7 @@ Do not confuse a phone number, order number, message time or price with a Nova P
 The full order value is the total price of all goods. The IBAN prepayment is commonly 200 UAH, but return it only if visible.
 The COD amount is the remaining amount that the customer will pay through NovaPay; keep it separate from the full value.
 Preserve product names, fabric, color, sizes, quantity and price in Ukrainian when visible.
+Extract the selected color or print separately into color when it is explicit. Do not infer it from a product photo or a generic product name.
 For products, preserve one of these exact types when it is visible: комплект постільної білизни, підковдра, наволочки, простирадло, простирадло на резинці.
 Always preserve the exact size (for example 50×70, 145×220 or 160×200×30) because it is used to select the CheckBox catalog article.
 For bedding sets, preserve the exact set label when visible: півтораспальний, двоспальний, Євро, Євро двоспальний, сімейний or індивідуальний розмір.
@@ -136,6 +142,7 @@ export function normalizeExtractedDraft(result) {
     email: isValidEmail(result?.email) ? cleanText(result.email, 160) : '-',
     city: cleanText(result?.city, 120),
     branch: cleanText(result?.branch, 180),
+    color: cleanText(result?.color, 80),
     itemsSummary: cleanText(result?.itemsSummary, 1200),
     totalAmount: normalizedTotal,
     prepaymentAmount,
