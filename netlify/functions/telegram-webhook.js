@@ -339,6 +339,7 @@ function shipmentPreviewHtml(shipment) {
     `📦 Вага: <b>${escapeHtml(weight)}</b>`,
     `📐 Розмір: <b>${Number(dimensions.length)}×${Number(dimensions.width)}×${Number(dimensions.height)} см</b>`,
     `🏷 Напис на етикетці: <b>${escapeHtml(shipment.description || 'Постільна білизна')}</b>`,
+    `🔢 Внутрішній номер: <b>${escapeHtml(shipment.description || 'Постільна білизна')}</b>`,
     `💰 Оголошена вартість: <b>${money(shipment.totalAmount)}</b>`,
     `💵 Післяплата NovaPay: <b>${money(shipment.codAmount)}</b>`,
     `🚛 Доставку оплачує: <b>${shipment.deliveryPayer === 'Sender' ? 'MIVA' : 'клієнт'}</b>`,

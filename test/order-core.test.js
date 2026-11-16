@@ -1356,7 +1356,7 @@ test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
     weight: 2,
     dimensions: { length: 40, width: 30, height: 20 },
     seatsAmount: 1,
-    description: 'Постільна білизна',
+    description: 'Рожевий 567',
     deliveryPayer: 'Recipient',
     sender: {
       cityRef: 'city-ref',
@@ -1371,6 +1371,8 @@ test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
   assert.equal(payload.ServiceType, 'WarehouseWarehouse');
   assert.equal(payload.RecipientAddressName, '12');
   assert.equal(payload.PaymentMethod, 'Cash');
+  assert.equal(payload.Description, 'Рожевий 567');
+  assert.equal(payload.InfoRegClientBarcodes, 'Рожевий 567');
   assert.equal(payload.AfterpaymentOnGoodsCost, '1450.00');
   assert.equal('BackwardDeliveryData' in payload, false);
   assert.deepEqual(payload.OptionsSeat, [{
@@ -1393,7 +1395,7 @@ test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
     weight: 2,
     dimensions: { length: 40, width: 30, height: 20 },
     seatsAmount: 1,
-    description: 'Постільна білизна',
+    description: 'Рожевий 567',
     deliveryPayer: 'Recipient',
     sender: {
       cityRef: 'city-ref',
@@ -1405,15 +1407,16 @@ test('builds a Nova Poshta waybill with the exact NovaPay COD balance', () => {
   }, new Date('2026-07-22T10:00:00.000Z'));
   assert.equal('BackwardDeliveryData' in fullyPaidPayload, false);
   assert.equal('AfterpaymentOnGoodsCost' in fullyPaidPayload, false);
+  assert.equal(fullyPaidPayload.InfoRegClientBarcodes, 'Рожевий 567');
 });
 
 test('retries a rejected Nova Poshta cargo description with the safe category', async () => {
   const originalFetch = globalThis.fetch;
-  const descriptions = [];
+  const documentProperties = [];
   globalThis.fetch = async (_url, options) => {
     const request = JSON.parse(options.body);
-    descriptions.push(request.methodProperties.Description);
-    const rejected = descriptions.length === 1;
+    documentProperties.push(request.methodProperties);
+    const rejected = documentProperties.length === 1;
     return {
       ok: true,
       status: 200,
@@ -1431,7 +1434,10 @@ test('retries a rejected Nova Poshta cargo description with the safe category', 
       sender: { cityRef: 'city-ref', ref: 'sender-ref', addressRef: 'address-ref', contactRef: 'contact-ref', phone: '380501234567' }
     }, { apiKey: 'test-key', retryBaseDelayMs: 0 });
     assert.equal(waybill.ttn, '20450000000001');
-    assert.deepEqual(descriptions, ['№633 Простирадло на резинці 5шт', 'Постільна білизна 633']);
+    assert.deepEqual(documentProperties.map(({ Description, InfoRegClientBarcodes }) => ({ Description, InfoRegClientBarcodes })), [
+      { Description: '№633 Простирадло на резинці 5шт', InfoRegClientBarcodes: '№633 Простирадло на резинці 5шт' },
+      { Description: 'Постільна білизна 633', InfoRegClientBarcodes: 'Постільна білизна 633' }
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

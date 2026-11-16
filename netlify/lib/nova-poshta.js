@@ -518,6 +518,10 @@ export function buildInternetDocumentPayload(shipment, date = new Date()) {
   const height = positiveNumber(dimensions.height);
   if (![length, width, height].every((value) => value && value <= 300)) throw new Error('invalid_shipment_dimensions');
   const payerType = shipment.deliveryPayer === 'Sender' ? 'Sender' : 'Recipient';
+  // Nova Poshta treats the parcel description and the customer's internal
+  // shipment reference as separate fields. Keep them identical so the short
+  // color/order text is available in both places for every TTN.
+  const description = cleanText(shipment.description || 'Постільна білизна', 36);
   const methodProperties = {
     PayerType: payerType,
     PaymentMethod: payerType === 'Sender' ? 'NonCash' : 'Cash',
@@ -526,7 +530,8 @@ export function buildInternetDocumentPayload(shipment, date = new Date()) {
     Weight: String(weight),
     ServiceType: 'WarehouseWarehouse',
     SeatsAmount: String(shipment.seatsAmount || 1),
-    Description: cleanText(shipment.description || 'Постільна білизна', 36),
+    Description: description,
+    InfoRegClientBarcodes: description,
     Cost: String(Math.ceil(Number(shipment.totalAmount))),
     CitySender: shipment.sender.cityRef,
     Sender: shipment.sender.ref,
@@ -573,9 +578,11 @@ export async function createNovaPoshtaWaybill(shipment, options = {}) {
     const orderNumber = cleanText(shipment?.customerOrderNumber || shipment?.orderId, 40)
       .replace(/\D/gu, '')
       .slice(0, 12);
+    const fallbackDescription = cleanText(`Постільна білизна${orderNumber ? ` ${orderNumber}` : ''}`, 36);
     const fallbackPayload = {
       ...payload,
-      Description: cleanText(`Постільна білизна${orderNumber ? ` ${orderNumber}` : ''}`, 36)
+      Description: fallbackDescription,
+      InfoRegClientBarcodes: fallbackDescription
     };
     console.warn('nova_poshta_description_fallback', JSON.stringify({
       attemptedDescription: payload.Description,
