@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  fetchNovaPayPayments,
   findNovaPayPaymentForOrder,
   isNovaPayConfigured,
+  NOVAPAY_AUTH_TIMEOUT_MS,
+  NOVAPAY_READ_TIMEOUT_MS,
   normalizeNovaPayPayments,
   normalizeNovaPayPublicCertificate
 } from '../netlify/lib/novapay-client.js';
@@ -69,4 +72,91 @@ test('normalizes a NovaPay bank registry document without inventing a TTN', () =
   assert.equal(payments[0].netAmount, 1343.25);
   assert.equal(payments[0].ttn, '');
   assert.equal(payments[0].registryNumber, '12345678');
+});
+
+test('allows a slow authentication response while retaining short read timeouts', async () => {
+  const originalFetch = globalThis.fetch;
+  const timeoutValues = [];
+  const events = [];
+  const envelope = (operation, content) => (
+    `<soap:Envelope><soap:Body><${operation}Response><${operation}Result>${content}</${operation}Result></${operation}Response></soap:Body></soap:Envelope>`
+  );
+  try {
+    globalThis.fetch = async (_url, init) => {
+      const operation = String(init.headers.SOAPAction).match(/\/([^/"]+)"$/u)?.[1];
+      events.push(operation);
+      if (operation === 'UserAuthenticationJWT') {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return new Response(envelope(operation, '<jwt>test-jwt</jwt><refresh_token>next-token</refresh_token><public_certificate>next-certificate</public_certificate>'));
+      }
+      if (operation === 'GetClientsList') return new Response(envelope(operation, '<id>123</id>'));
+      if (operation === 'GetAccountsList') return new Response(envelope(operation, '<id>account-1</id>'));
+      if (operation === 'GetPaymentsList') return new Response(envelope(operation, '<payments>{&quot;payments&quot;:[]}</payments>'));
+      throw new Error(`Unexpected operation: ${operation}`);
+    };
+
+    const payments = await fetchNovaPayPayments({
+      dateFrom: '2026-11-01',
+      dateTo: '2026-11-02',
+      env: {
+        NOVAPAY_LOGIN: 'api-user',
+        NOVAPAY_REFRESH_TOKEN_V2: 'initial-token',
+        NOVAPAY_PUBLIC_CERTIFICATE_V2: 'initial-certificate'
+      },
+      timeoutFactory: (milliseconds) => {
+        timeoutValues.push(milliseconds);
+        return new AbortController().signal;
+      },
+      onAuthenticationAttemptStart: async () => { events.push('attempt'); },
+      onCredentialsRotated: async () => { events.push('rotated'); }
+    });
+
+    assert.deepEqual(payments, []);
+    assert.deepEqual(timeoutValues, [
+      NOVAPAY_AUTH_TIMEOUT_MS,
+      NOVAPAY_READ_TIMEOUT_MS,
+      NOVAPAY_READ_TIMEOUT_MS,
+      NOVAPAY_READ_TIMEOUT_MS
+    ]);
+    assert.deepEqual(events, [
+      'attempt',
+      'UserAuthenticationJWT',
+      'rotated',
+      'GetClientsList',
+      'GetAccountsList',
+      'GetPaymentsList'
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('does not treat an authentication transport timeout as safe to retry', async () => {
+  const originalFetch = globalThis.fetch;
+  let started = 0;
+  let rotated = 0;
+  try {
+    globalThis.fetch = async () => {
+      const error = new Error('Timed out');
+      error.name = 'TimeoutError';
+      throw error;
+    };
+
+    await assert.rejects(
+      () => fetchNovaPayPayments({
+        env: {
+          NOVAPAY_LOGIN: 'api-user',
+          NOVAPAY_REFRESH_TOKEN_V2: 'initial-token',
+          NOVAPAY_PUBLIC_CERTIFICATE_V2: 'initial-certificate'
+        },
+        onAuthenticationAttemptStart: async () => { started += 1; },
+        onCredentialsRotated: async () => { rotated += 1; }
+      }),
+      (error) => error?.code === 'novapay_auth_outcome_unknown'
+    );
+    assert.equal(started, 1);
+    assert.equal(rotated, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -2,6 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 const DEFAULT_ENDPOINT = 'https://business.novapay.ua/Services/ClientAPIService.svc';
 const SOAP_NAMESPACE = 'http://tempuri.org/';
+export const NOVAPAY_AUTH_TIMEOUT_MS = 120000;
+export const NOVAPAY_READ_TIMEOUT_MS = 20000;
+
+export function novaPayTimeoutForOperation(operation) {
+  return operation === 'UserAuthenticationJWT' ? NOVAPAY_AUTH_TIMEOUT_MS : NOVAPAY_READ_TIMEOUT_MS;
+}
 
 function xmlEscape(value) {
   return String(value ?? '')
@@ -70,27 +76,69 @@ function soapEnvelope(operation, fields) {
     `</soap:Envelope>`;
 }
 
-async function soapCall(operation, fields, endpoint = DEFAULT_ENDPOINT) {
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/xml; charset=utf-8',
-      SOAPAction: `"${SOAP_NAMESPACE}IClientAPIService/${operation}"`
-    },
-    body: soapEnvelope(operation, fields),
-    signal: AbortSignal.timeout(20000)
+function annotateAuthenticationError(error, outcome) {
+  if (error && typeof error === 'object') {
+    Object.defineProperty(error, 'novaPayAuthAttemptOutcome', {
+      value: outcome,
+      enumerable: false,
+      configurable: true
+    });
+  }
+  return error;
+}
+
+function authenticationOutcomeUnknown(message, cause = null) {
+  const error = new Error(`NovaPay UserAuthenticationJWT: ${message}`, cause ? { cause } : undefined);
+  Object.defineProperty(error, 'code', {
+    value: 'novapay_auth_outcome_unknown',
+    enumerable: false,
+    configurable: true
   });
-  const xml = await response.text();
+  return annotateAuthenticationError(error, 'indeterminate');
+}
+
+function isTransportFailure(error) {
+  return error?.name === 'AbortError' || error?.name === 'TimeoutError' || error instanceof TypeError;
+}
+
+async function soapCall(operation, fields, endpoint = DEFAULT_ENDPOINT, { timeoutFactory = AbortSignal.timeout } = {}) {
+  let response;
+  let xml;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        SOAPAction: `"${SOAP_NAMESPACE}IClientAPIService/${operation}"`
+      },
+      body: soapEnvelope(operation, fields),
+      signal: timeoutFactory(novaPayTimeoutForOperation(operation))
+    });
+    xml = await response.text();
+  } catch (error) {
+    // A transport timeout can happen after NovaPay receives the rotating-token
+    // request. Treat that result as unknown instead of retrying the old pair.
+    if (operation === 'UserAuthenticationJWT' && isTransportFailure(error)) {
+      throw authenticationOutcomeUnknown('request outcome is unknown', error);
+    }
+    throw error;
+  }
   const fault = extractTag(xml, 'Fault');
   if (!response.ok || fault) {
     const detail = extractTag(xml, 'description') || extractTag(xml, 'faultstring') || `HTTP ${response.status}`;
-    throw new Error(`NovaPay ${operation}: ${detail.slice(0, 240)}`);
+    const error = new Error(`NovaPay ${operation}: ${detail.slice(0, 240)}`);
+    if (operation === 'UserAuthenticationJWT') {
+      annotateAuthenticationError(error, response.status >= 500 ? 'indeterminate' : 'rejected');
+    }
+    throw error;
   }
   const result = extractTag(xml, `${operation}Result`);
   const errorTitle = extractTag(result, 'title');
   const operationResult = extractTag(result, 'result');
   if (errorTitle || (operationResult && !/^(?:0|ok|success)$/i.test(operationResult))) {
-    throw new Error(`NovaPay ${operation}: ${(errorTitle || operationResult).slice(0, 240)}`);
+    const error = new Error(`NovaPay ${operation}: ${(errorTitle || operationResult).slice(0, 240)}`);
+    if (operation === 'UserAuthenticationJWT') annotateAuthenticationError(error, 'rejected');
+    throw error;
   }
   return result;
 }
@@ -237,26 +285,38 @@ export function isNovaPayConfigured(env = process.env) {
   );
 }
 
-export async function fetchNovaPayPayments({ dateFrom, dateTo, env = process.env, credentials = null, onCredentialsRotated = null } = {}) {
+export async function fetchNovaPayPayments({
+  dateFrom,
+  dateTo,
+  env = process.env,
+  credentials = null,
+  onAuthenticationAttemptStart = null,
+  onCredentialsRotated = null,
+  timeoutFactory = AbortSignal.timeout
+} = {}) {
   if (!isNovaPayConfigured(env)) throw new Error('NovaPay API is not configured');
   const endpoint = env.NOVAPAY_API_ENDPOINT || DEFAULT_ENDPOINT;
+  const soapOptions = { timeoutFactory };
+  if (onAuthenticationAttemptStart) await onAuthenticationAttemptStart();
   const authResult = await soapCall('UserAuthenticationJWT', {
     request_ref: randomUUID(),
     refresh_token: credentials?.refreshToken || env.NOVAPAY_REFRESH_TOKEN_V2 || env.NOVAPAY_REFRESH_TOKEN,
     login: novaPayLogin(env),
     public_certificate: normalizeNovaPayPublicCertificate(credentials?.publicCertificate || publicCertificate(env))
-  }, endpoint);
+  }, endpoint, soapOptions);
   const jwt = extractTag(authResult, 'jwt');
-  if (!jwt) throw new Error('NovaPay authentication did not return JWT');
+  if (!jwt) throw authenticationOutcomeUnknown('authentication response did not return JWT');
   const refreshToken = extractTag(authResult, 'refresh_token');
   const rotatedPublicCertificate = extractTag(authResult, 'public_certificate');
-  if (!refreshToken || !rotatedPublicCertificate) throw new Error('NovaPay authentication did not return rotated credentials');
+  if (!refreshToken || !rotatedPublicCertificate) {
+    throw authenticationOutcomeUnknown('authentication response did not return rotated credentials');
+  }
   if (onCredentialsRotated) await onCredentialsRotated({ refreshToken, publicCertificate: rotatedPublicCertificate });
   // JWT authorization replaces `principal`; sending an empty principal makes
   // some NovaPay methods reject an otherwise valid JWT session.
   const auth = { request_ref: randomUUID(), jwt };
 
-  const clientsResult = await soapCall('GetClientsList', auth, endpoint);
+  const clientsResult = await soapCall('GetClientsList', auth, endpoint, soapOptions);
   const clientId = Number(extractTag(clientsResult, 'id'));
   if (!Number.isInteger(clientId) || clientId <= 0) throw new Error('NovaPay client account was not found');
 
@@ -264,7 +324,7 @@ export async function fetchNovaPayPayments({ dateFrom, dateTo, env = process.env
     ...auth,
     request_ref: randomUUID(),
     client_id: clientId
-  }, endpoint);
+  }, endpoint, soapOptions);
   const accountId = extractTag(accountsResult, 'id');
   if (!accountId) throw new Error('NovaPay settlement account was not found');
 
@@ -275,7 +335,7 @@ export async function fetchNovaPayPayments({ dateFrom, dateTo, env = process.env
     date_from: novaPayDate(dateFrom),
     date_to: novaPayDate(dateTo),
     date_type: 1
-  }, endpoint);
+  }, endpoint, soapOptions);
   const payload = extractTag(paymentsResult, 'payments');
   return normalizeNovaPayPayments(payload);
 }

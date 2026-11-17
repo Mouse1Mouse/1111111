@@ -3,7 +3,13 @@ import { randomUUID } from 'node:crypto';
 
 const STORE_NAME = 'miva-instagram-orders';
 const NOVAPAY_CREDENTIAL_LEASE_KEY = 'locks/novapay-credential-rotation.json';
-const NOVAPAY_CREDENTIAL_LEASE_MS = 3 * 60 * 1000;
+const NOVAPAY_AUTH_ATTEMPT_KEY = 'integrations/novapay-auth-attempt.json';
+const NOVAPAY_MONITOR_DISPATCH_LEASE_KEY = 'locks/novapay-monitor-dispatch.json';
+// Authentication can wait up to two minutes, followed by three read-only SOAP
+// calls. Leave a buffer so another scheduled/background invocation cannot
+// spend the same rotating pair while that bounded path is still in flight.
+export const NOVAPAY_CREDENTIAL_LEASE_MS = 6 * 60 * 1000;
+export const NOVAPAY_MONITOR_DISPATCH_LEASE_MS = 12 * 60 * 1000;
 
 export function connectOrderStore(event) {
   connectLambda(event);
@@ -118,13 +124,15 @@ export function parseNovaPayApiCredentials(raw) {
 }
 
 export function serializeNovaPayApiCredentials(credentials, rotatedAt = new Date().toISOString()) {
-  return {
+  const value = {
     refreshToken: String(credentials.refreshToken || ''),
     publicCertificate: String(credentials.publicCertificate || ''),
     sourceVersion: String(credentials.sourceVersion || ''),
     credentialEpoch: String(credentials.credentialEpoch || ''),
     rotatedAt
   };
+  const authAttemptId = String(credentials.authAttemptId || '');
+  return authAttemptId ? { ...value, authAttemptId } : value;
 }
 
 export async function saveNovaPayApiCredentials(credentials) {
@@ -136,8 +144,41 @@ export async function saveNovaPayApiCredentials(credentials) {
   return value;
 }
 
+// A refresh token may have been rotated by NovaPay even when the caller loses
+// the response. This record contains no credential material; it lets a later
+// invocation stop safely instead of retrying a possibly spent token.
+export async function getNovaPayAuthAttempt() {
+  return store().get(NOVAPAY_AUTH_ATTEMPT_KEY, { type: 'json' });
+}
+
+export async function beginNovaPayAuthAttempt({ credentialEpoch, source } = {}) {
+  const epoch = String(credentialEpoch || '').trim();
+  if (!epoch) throw new Error('NovaPay authentication attempt requires a credential epoch');
+  const attempt = {
+    state: 'pending',
+    attemptId: randomUUID(),
+    credentialEpoch: epoch,
+    source: String(source || 'unknown'),
+    startedAt: new Date().toISOString()
+  };
+  await store().setJSON(NOVAPAY_AUTH_ATTEMPT_KEY, attempt);
+  return attempt;
+}
+
+export async function resolveNovaPayAuthAttempt(attempt) {
+  if (!attempt?.attemptId) return false;
+  const current = await store().getWithMetadata(NOVAPAY_AUTH_ATTEMPT_KEY, { type: 'json' });
+  if (!current || current.data?.attemptId !== attempt.attemptId) return false;
+  const resolved = await store().setJSON(NOVAPAY_AUTH_ATTEMPT_KEY, {
+    ...current.data,
+    state: 'resolved',
+    resolvedAt: new Date().toISOString()
+  }, { onlyIfMatch: current.etag });
+  return Boolean(resolved.modified);
+}
+
 // NovaPay refresh tokens rotate after every successful authorization. This
-// short lease ensures two monitor invocations cannot spend the same pair.
+// lease ensures two monitor invocations cannot spend the same pair.
 // It stores no credential material and self-expires if an invocation dies.
 export async function claimNovaPayCredentialLease({ durationMs = NOVAPAY_CREDENTIAL_LEASE_MS } = {}) {
   const now = Date.now();
@@ -176,6 +217,36 @@ export async function releaseNovaPayCredentialLease(lease) {
     expiresAt: new Date(0).toISOString()
   }, { onlyIfMatch: lease.etag });
   return Boolean(released.modified);
+}
+
+// The scheduler invokes a public Background Function endpoint. Its HMAC makes
+// the endpoint private in practice; this short durable lease additionally
+// makes an intercepted/replayed signed request a no-op. One rolling record is
+// sufficient and avoids retaining a Blob for every scheduled invocation.
+export async function claimNovaPayMonitorDispatch(dispatchId, {
+  durationMs = NOVAPAY_MONITOR_DISPATCH_LEASE_MS
+} = {}) {
+  const id = String(dispatchId || '').trim();
+  if (!/^[\da-f-]{36}$/iu.test(id)) return false;
+  const now = Date.now();
+  const lease = {
+    dispatchId: id,
+    acquiredAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + durationMs).toISOString()
+  };
+  const created = await store().setJSON(NOVAPAY_MONITOR_DISPATCH_LEASE_KEY, lease, { onlyIfNew: true });
+  if (created.modified) return true;
+
+  const current = await store().getWithMetadata(NOVAPAY_MONITOR_DISPATCH_LEASE_KEY, { type: 'json' });
+  if (!current) return false;
+  if (current.data?.dispatchId === id) return false;
+  const expiresAt = Date.parse(String(current.data?.expiresAt || ''));
+  if (Number.isFinite(expiresAt) && expiresAt > now) return false;
+
+  const takenOver = await store().setJSON(NOVAPAY_MONITOR_DISPATCH_LEASE_KEY, lease, {
+    onlyIfMatch: current.etag
+  });
+  return Boolean(takenOver.modified);
 }
 
 export async function claimFiscalNotification(key, details = {}) {

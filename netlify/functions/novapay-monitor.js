@@ -5,19 +5,23 @@ import {
   findNovaPayPaymentForOrder
 } from '../lib/novapay-client.js';
 import {
+  beginNovaPayAuthAttempt,
   claimNovaPayCredentialLease,
   claimAction,
   completeAction,
   connectOrderStore,
+  getNovaPayAuthAttempt,
   getNovaPayApiCredentials,
   listOrders,
   releaseNovaPayCredentialLease,
   releaseAction,
+  resolveNovaPayAuthAttempt,
   saveBotError,
   saveOrder,
   saveNovaPayApiCredentials
 } from '../lib/order-store.js';
 import { parseChatIds, telegramClient } from '../lib/telegram-client.js';
+import { enqueueNovaPayMonitorBackgroundRun } from '../lib/novapay-monitor-dispatch.js';
 
 // NovaPay is used here only for reconciliation. CheckBox Delivery owns the
 // final fiscalization of an ETTN project after the buyer receives the parcel.
@@ -134,6 +138,9 @@ function recordCheckboxDeliverySettlement(order, payment) {
 }
 
 export function classifyNovaPayAuthFailure(error) {
+  if (error?.code === 'novapay_auth_outcome_unknown' || error?.novaPayAuthAttemptOutcome === 'indeterminate') {
+    return 'credential_rotation_outcome_unknown';
+  }
   const message = String(error?.message || '');
   if (!/NovaPay UserAuthenticationJWT:|refresh token/iu.test(message)) return null;
   if (/certificate|public[ _-]?key|key format/iu.test(message)) return 'certificate_rejected';
@@ -141,6 +148,17 @@ export function classifyNovaPayAuthFailure(error) {
   if (/HTTP 5\d\d/iu.test(message)) return 'upstream_http_5xx';
   if (/HTTP 4\d\d/iu.test(message)) return 'upstream_http_4xx';
   return 'user_authentication_rejected';
+}
+
+function markNovaPayAuthOutcomeUnknown(error) {
+  if (error && typeof error === 'object') {
+    Object.defineProperty(error, 'novaPayAuthAttemptOutcome', {
+      value: 'indeterminate',
+      enumerable: false,
+      configurable: true
+    });
+  }
+  return error;
 }
 
 export function configuredNovaPayBootstrap(env = process.env) {
@@ -178,6 +196,9 @@ export async function fetchNovaPayPaymentsWithCredentialLease({
   dateTo,
   bootstrap,
   loadCredentials = getNovaPayApiCredentials,
+  loadAuthAttempt = getNovaPayAuthAttempt,
+  beginAuthAttempt = beginNovaPayAuthAttempt,
+  resolveAuthAttempt = resolveNovaPayAuthAttempt,
   acquireLease = claimNovaPayCredentialLease,
   releaseLease = releaseNovaPayCredentialLease,
   fetchPayments = fetchNovaPayPayments,
@@ -189,22 +210,69 @@ export async function fetchNovaPayPaymentsWithCredentialLease({
   try {
     // Read only after acquiring the lease: a prior invocation may have already
     // rotated and saved the next pair while this one was waiting.
-    const selected = selectNovaPayCredentials(await loadCredentials(), bootstrap);
+    const savedCredentials = await loadCredentials();
+    const pendingAttempt = await loadAuthAttempt();
+    if (pendingAttempt?.state === 'pending') {
+      const recovered = selectNovaPayCredentials(savedCredentials, bootstrap);
+      const epochChanged = pendingAttempt.credentialEpoch !== String(bootstrap?.credentialEpoch || '');
+      const successorWasSaved = (
+        recovered.source === 'stored' &&
+        savedCredentials?.authAttemptId === pendingAttempt.attemptId
+      );
+      if (epochChanged || successorWasSaved) {
+        const resolved = await resolveAuthAttempt(pendingAttempt);
+        if (!resolved) {
+          return { kind: 'auth_outcome_unknown', payments: [], source: recovered.source || 'unknown' };
+        }
+      } else {
+        // Never reuse a pair when an authentication request may have reached
+        // NovaPay but its successor credentials were not durably recorded.
+        return { kind: 'auth_outcome_unknown', payments: [], source: recovered.source || 'unknown' };
+      }
+    }
+
+    const selected = selectNovaPayCredentials(savedCredentials, bootstrap);
     if (selected.kind !== 'ready') return { ...selected, payments: [] };
 
+    let authAttempt = null;
     try {
       const payments = await fetchPayments({
         dateFrom,
         dateTo,
         credentials: selected.credentials,
-        onCredentialsRotated: (rotated) => saveCredentials({
-          ...rotated,
-          sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION,
-          credentialEpoch: bootstrap.credentialEpoch
-        })
+        onAuthenticationAttemptStart: async () => {
+          if (authAttempt) return authAttempt;
+          authAttempt = await beginAuthAttempt({
+            credentialEpoch: bootstrap.credentialEpoch,
+            source: selected.source
+          });
+          if (!authAttempt?.attemptId) throw new Error('NovaPay authentication attempt could not be recorded');
+          return authAttempt;
+        },
+        onCredentialsRotated: async (rotated) => {
+          const credentials = {
+            ...rotated,
+            sourceVersion: NOVAPAY_CREDENTIAL_SOURCE_VERSION,
+            credentialEpoch: bootstrap.credentialEpoch,
+            ...(authAttempt?.attemptId ? { authAttemptId: authAttempt.attemptId } : {})
+          };
+          try {
+            await saveCredentials(credentials);
+          } catch (error) {
+            // NovaPay may already have invalidated the prior pair. A failed
+            // durable save must stop automatic retries of that uncertain pair.
+            throw markNovaPayAuthOutcomeUnknown(error);
+          }
+          if (authAttempt && !await resolveAuthAttempt(authAttempt)) {
+            throw new Error('NovaPay authentication attempt could not be finalized');
+          }
+        }
       });
       return { kind: 'completed', payments, source: selected.source };
     } catch (error) {
+      if (authAttempt && error?.novaPayAuthAttemptOutcome === 'rejected') {
+        await resolveAuthAttempt(authAttempt);
+      }
       if (error && typeof error === 'object') {
         Object.defineProperty(error, 'novaPayCredentialSource', {
           value: selected.source,
@@ -219,7 +287,10 @@ export async function fetchNovaPayPaymentsWithCredentialLease({
   }
 }
 
-export const handler = async (event) => {
+// The background worker calls this function after the small scheduled
+// dispatcher has queued it. Keep the business flow here so a real monitor run
+// is never constrained by the 30-second Scheduled Function limit.
+export async function runNovaPayMonitor(event) {
   connectOrderStore(event);
   const bootstrap = configuredNovaPayBootstrap();
   const configurationStatus = novaPayBootstrapConfigurationStatus();
@@ -245,6 +316,17 @@ export const handler = async (event) => {
     if (paymentResult.kind === 'deferred') {
       console.info('NovaPay monitor deferred: credential rotation is already in progress');
       return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'credential_rotation_in_progress' }) };
+    }
+    if (paymentResult.kind === 'auth_outcome_unknown') {
+      console.warn('NovaPay monitor paused: authentication outcome is unknown; previous credentials will not be retried');
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          ok: false,
+          skipped: 'reauthorization_required',
+          reason: 'credential_rotation_outcome_unknown'
+        })
+      };
     }
     if (paymentResult.kind === 'reconnect_required') {
       console.warn('NovaPay monitor paused: API credentials must be reconnected');
@@ -333,4 +415,38 @@ export const handler = async (event) => {
     });
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: 'NovaPay monitoring failed' }) };
   }
-};
+}
+
+// Netlify Scheduled Functions have a fixed 30-second limit. This handler
+// only authenticates a request to the background worker, which returns 202
+// immediately and performs the 120-second NovaPay authentication separately.
+export function createNovaPayMonitorScheduledHandler({
+  env = process.env,
+  enqueueBackgroundRun = enqueueNovaPayMonitorBackgroundRun
+} = {}) {
+  return async () => {
+    const bootstrap = configuredNovaPayBootstrap(env);
+    const configurationStatus = novaPayBootstrapConfigurationStatus(env);
+    if (!bootstrap || !configurationStatus.loginConfigured) {
+      console.warn(`NovaPay monitor paused: API credentials must be reconnected ${JSON.stringify(configurationStatus)}`);
+      return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'not_configured' }) };
+    }
+
+    const chatIds = parseChatIds(env.TELEGRAM_OPERATOR_CHAT_IDS || env.TELEGRAM_CHAT_IDS);
+    if (!env.TELEGRAM_BOT_TOKEN || chatIds.length === 0) {
+      console.warn('NovaPay monitor skipped: Telegram is not configured');
+      return { statusCode: 200, body: JSON.stringify({ ok: false, skipped: 'telegram_not_configured' }) };
+    }
+
+    try {
+      const result = await enqueueBackgroundRun({ env });
+      console.info('NovaPay monitor background dispatched', { queued: result.queued });
+      return { statusCode: 202, body: JSON.stringify({ ok: true, queued: true }) };
+    } catch (error) {
+      console.error('NovaPay monitor dispatch failed', String(error?.message || error).slice(0, 180));
+      return { statusCode: 500, body: JSON.stringify({ ok: false, error: 'NovaPay monitor dispatch failed' }) };
+    }
+  };
+}
+
+export const handler = createNovaPayMonitorScheduledHandler();
