@@ -195,26 +195,29 @@ test('archives a completed direct IBAN order without claiming a fiscal receipt e
 });
 
 test('prepares an idempotent Checkbox fiscal draft only after all payments are confirmed', () => {
-  const created = createOrder(draft(), { now: NOW, chatId: '123' });
+  const created = createOrder(draft({
+    itemsSummary: 'Комплект постільної білизни 1 шт × 1750 грн',
+    totalAmount: '1750'
+  }), { now: NOW, chatId: '123' });
   assert.equal(isFiscalReceiptReady(created), false);
   assert.throws(() => buildFiscalReceiptDraft(created), /not ready/);
 
   const paid = markNovaPayReceived(
     attachTtn(markPrepaymentReceived(created, 200), '20451234567890'),
-    1500,
+    1550,
     '2026-07-23T12:00:00.000Z'
   );
   const prepared = prepareFiscalReceiptDraft(paid, '2026-07-23T12:05:00.000Z');
   assert.equal(prepared.fiscalReceipt.provider, 'checkbox');
   assert.equal(prepared.fiscalReceipt.idempotencyKey, `miva:${created.id}:sale:v4`);
-  assert.equal(prepared.fiscalReceipt.totalAmount, 1700);
+  assert.equal(prepared.fiscalReceipt.totalAmount, 1750);
   assert.equal(prepared.fiscalReceipt.catalogStatus, 'matched');
   assert.equal(prepared.fiscalReceipt.items[0].sku, 'MIVA-BED-200');
   assert.deepEqual(
     prepared.fiscalReceipt.payments.map(({ source, amount }) => ({ source, amount })),
     [
       { source: 'monobank_prepayment', amount: 200 },
-      { source: 'novapay_cod', amount: 1500 }
+      { source: 'novapay_cod', amount: 1550 }
     ]
   );
   assert.equal(
@@ -244,11 +247,11 @@ test('matches every canonical SOTA catalog name back to its own article', () => 
 
 test('matches all standard bedding set labels to SOTA articles', () => {
   const cases = [
-    ['Півтораспальний комплект, наволочки 50×70', 1550, 'MIVA-BED-150'],
-    ['Двохспальний комплект, наволочки 70×70', 1700, 'MIVA-BED-200'],
-    ['Комплект Євро, однотон', 1750, 'MIVA-BED-EURO'],
-    ['Євро двоспальний комплект', 1800, 'MIVA-BED-EURO-2'],
-    ['Сімейний комплект постільної білизни', 1900, 'MIVA-BED-FAMILY'],
+    ['Півтораспальний комплект, наволочки 50×70', 1650, 'MIVA-BED-150'],
+    ['Двохспальний комплект, наволочки 70×70', 1750, 'MIVA-BED-200'],
+    ['Комплект Євро, однотон', 1800, 'MIVA-BED-EURO'],
+    ['Євро двоспальний комплект', 1850, 'MIVA-BED-EURO-2'],
+    ['Сімейний комплект постільної білизни', 1950, 'MIVA-BED-FAMILY'],
     ['Комплект індивідуальний розмір', 2100, 'MIVA-BED-CUSTOM']
   ];
   for (const [summary, total, sku] of cases) {
@@ -282,13 +285,13 @@ test('matches fitted sheets, duvets, pillowcases and flat sheets by exact size',
 test('creates separate fiscal lines for a bedding set and fitted sheet', () => {
   const result = matchOrderSummaryToCatalog(
     '«Смарагд» Євро двоспальний комплект; додатково простирадло на резинці 160×200×30',
-    2250
+    2300
   );
   assert.deepEqual(result.items.map((item) => item.sku), [
     'MIVA-BED-EURO-2',
     'MIVA-SHEET-FITTED-160X200X30'
   ]);
-  assert.deepEqual(result.items.map((item) => item.totalAmount), [1800, 450]);
+  assert.deepEqual(result.items.map((item) => item.totalAmount), [1850, 450]);
   assert.equal(result.status, 'matched');
 });
 
